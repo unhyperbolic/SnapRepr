@@ -37,15 +37,8 @@ cdef extern from "pari/paripriv.h":
         INIT_DFTm=4
         INIT_SIGm=2
     ctypedef struct gp_data:
-        unsigned long primelimit
         jmp_buf env
-        void *hist
-        void *pp
-        void *path
-        void *fmt
-        unsigned long flags, lim_lines
-        char *help, *prompt, *prompt_cont
-        void *T
+        pass
     cdef extern gp_data *GP_DATA
 
 
@@ -60,9 +53,9 @@ def _pari_eval(str py_input):
     global GP_DATA
 
     av = avma
-    if setjmp(GP_DATA.env):
-        avma = av
-        raise Exception, "PARI ERROR in %s" % py_input
+#    if setjmp(GP_DATA.env):
+#        avma = av
+#        raise Exception, "PARI ERROR in %s" % py_input
 
     bytes_input = bytes(py_input)
     
