@@ -1,1 +1,89 @@
-SnapRepr is a tool to find SL(N,C) representations of 3-manifolds
+INSTALLATION
+
+1. Go to src directory and run setup script:
+
+cd src
+python setup.py install
+
+2. Add the src/bin directory to the $PATH environment variable
+
+For example, if the directory is /home/foo/SnapRepr/src/bin, then add the following lines
+to ~/.profile:
+
+PATH="/home/foo/SnapRepr/src/bin:$PATH"
+
+
+COMPUTING REPRESENTATIONS
+
+1. slN_representation.py triangulation_file.trig
+
+triangulation_file.trig is a SnapPea triangulation
+The -N option can be used to specify which SL(N,C)
+This will write a magma input file for each cohomology obstruction.
+
+2. magma_out magma_input_file.magma
+
+This will run magma and write the file to magma_input_file.magma_out
+
+3. slN_representation.py magma_input_file.magma_out
+
+This will take the magma output file and compute the complex volumes of the
+representations. 
+Use the -p option to specify precision.
+
+ORDERING TRIANGULATIONS
+
+order_triangulation.py IN_TRIANGULATION_FILE OUT_TRIANGULATION_FILE
+
+MAKING A SPREADSHEET WITH THE RESULTS
+
+slN_representations.py -H >representation_volumes.csv
+for i in */*out; do echo "$i"; echo "$i" >> errors.txt; slN_representations.py "$i" >>representation_volumes.csv 2>> errors.txt; done
+
+Making a spreadsheet with census volumes
+
+Snap_inv_trace_field_and_volume.py -H > census_volumes.csv
+for i in cusped*/*.trig; do Snap_inv_trace_field_and_volume.py $i >> census_volumes.csv; done
+
+
+
+NAMING CONVENTIONS FOR PIPELINE
+
+1. Tringulation files as produced by SnapPy
+
+cusped_NO/NAME.trig
+cusped_30_higher/NAME.trig
+
+Name is (also see http://www.math.uic.edu/t3m/SnapPy/censuses.html)
+* snappy.OrientableCuspedCensus:      Name,                                e.g., m003
+* snappy.LinkExteriors:               Name,                                e.g., 10^3_2 for links, 10_14 for knots
+* snappy.MorwenLinks:                 DT code, #crossings and #components, e.g., 14^2_DT[nbgghcfIjbLgkMnAEd]
+* snappy.AlternatingKnotExteriors:    Name,                                e.g., 15a5
+  snappy.NonalternatingKnotExteriors: Name,                                e.g., 15n4
+
+2. An ordered triangulation file if triangulation is orderable
+
+cusped_NO/NAME_ORDERSTATE.trig
+
+where ORDERSTATE is ordered or unorderable
+
+3. The magma file with the Ptolemy variety
+
+cusped_NO/NAME_ORDERSTATE_slN_cK.magma
+
+where K is indexing the various cohomology obstructions and N is the N in SL(N,C)
+
+4. The output of magma
+
+cusped_NO/NAME_ORDERSTATE_slN_cK.magma_out
+
+5. A csv files with the rows containing the data and the volume
+
+cusped_NO/NAME_ORDERSTATE_slN_cK.csv
+
+TODO
+
+* Write tools to sort and filter csv files
+* Make generation of magma files independent of pari
+* Pick 10 triangulations and pick with minimal no tets
+* python26 call
