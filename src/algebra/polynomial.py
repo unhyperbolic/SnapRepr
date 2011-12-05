@@ -1,14 +1,269 @@
 import re
-from fractions import Fraction
+import operator
+#from fractions import Fraction
 
-from algebra.pari import *
+#from algebra.pari import *
+
+#mathTypes
+
+#typesafeOperatorPolicy(a, b, op):
+
+#getImaginaryUnit
+
+def parseIntCoefficient(s):
+    coeff, rest = re.match('([0-9]*)(.*)',s).groups()
+
+    if coeff:
+        coeff = int(coeff)
+    else:
+        coeff = None
+    return coeff, rest
+
+_operators = {
+    '+' : operator.add,
+    '-' : operator.sub,
+    '*' : operator.mul,
+    '^' : operator.pow
+    }
+
+def _applyOperator(op, l, r):
+    return _operators[op](l,r)
+
+_operatorPrecedence = {
+    None : 0,
+    '+' : 1,
+    '-' : 1,
+    '*' : 2,
+    '^' : 3
+    }
+                
+def _parsePolynomial(s, parseCoefficient = parseIntCoefficient):
+
+    operandStack = [Polynomial()]
+    operatorStack = []
+
+    def debugPrint(s):
+        print "=" * 75
+        print "Remaining string : ", s
+        print "Operator Stack   : ", operatorStack
+        print "Operand Stack    : ", operandStack
+
+    def evalPrecedingOperatorsOnStack(operator = None):
+        while operatorStack:
+            topOperator = operatorStack[-1]
+            
+            if topOperator == '(':
+                return
+            
+            if (_operatorPrecedence[topOperator] <
+                _operatorPrecedence[operator]):
+                return
+            
+            topOperator = operatorStack.pop()
+            r = operandStack.pop()
+            l = operandStack.pop()
+
+            operandStack.append(
+                _applyOperator(topOperator, l, r))
+
+    def processNextToken(s):
+        s = s.lstrip()
+
+        operand, rest = parseCoefficient(s)
+        if operand:
+            operandStack.append(operand)
+            return rest
+
+        nextChar, rest = s[0], s[1:]
+        
+        if nextChar in _operators.keys():
+            operator = nextChar
+            evalPrecedingOperatorsOnStack(operator)
+            operatorStack.append(operator)
+            return rest
+
+        if nextChar in '()':
+            parenthesis = nextChar
+            if parenthesis == '(':
+                operatorStack.append('(')
+            else:
+                evalPrecedingOperatorsOnStack()
+                assert operatorStack.pop() == '('
+            return rest
+
+        raise "WTF?"
+
+    s = s.strip()
+    while s:
+        # debugPrint(s)
+        s = processNextToken(s)
+
+    # debugPrint(s)
+    evalPrecedingOperatorsOnStack(None)
+
+    # debugPrint(s)
+
+    assert not operatorStack
+    assert (len(operandStack) == 1
+            or (
+                len(operandStack) == 2 and
+                operandStack[0] == Polynomial())) 
+
+    return operandStack[-1]
+
+# This implements our type policy for multiplication
+# Allowed:
+#      multiplying two objects of same type
+#      multiplying by an integer (from either left or right)
+#
+# If multiplying with an integer, the integer is cast to the type
+# of the other factor.
+
+def _typesafeMultiply(a, b):
+    if type(a) == type(b):
+        return a * b
+    if type(a) == int:
+        return type(b)(a) * b
+    if type(b) == int:
+        return a * type(a)(b)
+    raise Exception, "Cannot multiply two different types"
+
+def _combineDicts(listOfDicts, combineFunction):
+    result = {}
+    for aDict in listOfDicts:
+        for k, v in a.Dict.items():
+            if result.has_key(k):
+                result[k] = combineFunction(result[k], v)
+            else:
+                result[k] = v
+    return result
+
+def _dictToOrderedTupleOfPairs(d):
+    l = d.items()
+    l.sort(key = lambda x:x[0])
+    return tuple(l)
+
+class Monomial(object):
+
+    # Given a string as variable name, constructs the corresponding monomial
+    @classmethod
+    def fromVariableName(var):
+        return Monomial(1, ((var, 1),))
+
+    # Constructor
+    def __init__(self, coefficient, vars):
+        """
+        >>> Monomial(2, (('a', 2), ('b', 3)))
+        """
+
+        self._coefficient = _coefficient
+
+        if isinstance(vars, dict):
+            self._vars = _dictToOrderedTupleOfPairs(vars)
+        else:
+            assert isinstance(vars, tuple)
+            self._vars = vars
+
+    # Returns the coefficient
+    def getCoefficient(self):
+        return self._coefficient
+
+    # Returns the type of the coefficient
+    def coefficientType(self):
+        return type(self._coefficient)
+
+    # Returns a tuple of pairs (variableName, Exponent)
+    def getVars(self):
+        return self._vars
+
+    # Returns the list of variables
+    def variables(self):
+        return [var[0] for var in self._vars if var[1] > 0]
+
+    # Returns the degree of the monomial
+    def degree(self):
+        return sum([var[1] for var in self._vars])
+        
+    # Multiply two monomials
+    def __mul__(self, other):
+        
+        assert isinstance(other, Monomial)
+
+        # Determine the coefficient
+        coefficient = _typesafeMultiply(self._coefficient, other._coefficient)
+
+        # Compute the variables
+        varDict = _combineDicts([self._vars,other._vars],
+                                lambda x,y: x + y)
+
+        return Monomial(coefficient, varDict)
+
+    # Check whether two monomials are equal
+    def __eq__(self,other):
+
+        assert isinstance(other, monomial)
+
+        return (
+            self._coefficient == other._coefficient and
+            self._vars == other._vars)
+
+class Polynomial(object):
+    
+    def __init__(self, monomials = ()):
+
+        # combine monomials with the same variables and exponents
+        # and bring them into canonical order
+
+        assert isinstance(monomials, tuple)
+
+        # create for each monomial a dictionary
+        # with key being the variables and exponents
+        # and value being the coefficient
+
+        listOfVarsCoeffDicts = [
+            { monomial.getVars() : monomial.getCoeffcient() }
+            for monomial in monomials]
+
+        # combine the dictionaries using sum
+        combinedVarsCoeffDict = _combineDicts(listOfVarsCoeffDicts,
+                                              lambda x, y: x + y)
+
+        # turn dictionary into a list of pairs (vars, coefficient)
+        # in canonical order
+        orderedTupleOfVarsCoeffPairs = _dictToOrderedTupleOfPairs(
+            combinedVarsCoeffDict)
+
+        # turn pairs into monomials, skip trivial monomials
+        combinedMonomials = [
+            Monomial(coefficient, vars)
+            for vars, coefficient in orderedTupleOfVarsCoeffPairs
+            if not coefficient == 0]
+
+        # convert to tuple
+        self._monomials = tuple(combinedMonomials)
+
+    def __eq__(self, other):
+        return self._monomials == other._monomials
+
+    def __add__(self, other):
+        assert isinstance(other, Polynomial)
+        return Polynomial(self._monomials + other._monomials)
+
+    def __mul__(self, other):
+        monomials = []
+        
+        for m in self._monomials:
+            for n in self._monomials:
+                monomials.append(m * n)
+                
+        return Polynomial(monomials)
 
 
-class polynomial(object):
+class OldPolynomial(object): ### allows multiplication with integers
     def __init__(self,terms=[]):
         """
-        >>> p1 = polynomial('3 * t * t + t ^ 6 + x * t * y')
-        >>> p2 = polynomial('t * x * y + 3 * t^2 + t^6')
+        >>> p1 = Polynomial('3 * t * t + t ^ 6 + x * t * y')
+        >>> p2 = Polynomial('t * x * y + 3 * t^2 + t^6')
         >>> p1 == p2
         True
         >>> str(p1 + p2)
@@ -19,7 +274,7 @@ class polynomial(object):
         't^2 * x^2 * y^2 + 6 * t^3 * x * y + 9 * t^4 + 2 * t^7 * x * y + 6 * t^8 + t^12'
         >>> p1 == p1 ** 2
         False
-        >>> p3 = polynomial('x+1')
+        >>> p3 = Polynomial('x+1')
         >>> p4 = p3 ** 3
         >>> str(p4)
         '1  + 3 * x + 3 * x^2 + x^3'
@@ -44,10 +299,10 @@ class polynomial(object):
         AssertionError
         >>> p4.leading_coefficient()
         1
-        >>> p6 = polynomial('1+x^2')
+        >>> p6 = Polynomial('1+x^2')
         >>> str(p4 % p6)
         '- 2 + 2 * x'
-        >>> str(polynomial('4+3*x').make_monic())
+        >>> str(Polynomial('4+3*x').make_monic())
         '(4/3) + x'
         >>> str(p5 + 2 * p3 + p2 * 3)
         '168.375 + 3 * t * x * y + 9 * t^2 + 3 * t^6 + 2 * x'
@@ -57,7 +312,7 @@ class polynomial(object):
             self.terms=[(terms,)]
         if isinstance(terms,int):
             self.terms=[(terms,)]        
-        if isinstance(terms,polynomial):
+        if isinstance(terms,Polynomial):
             self.terms=terms.terms
         if isinstance(terms,str):
             # does the expression have any +, * or ^ sign
@@ -67,7 +322,7 @@ class polynomial(object):
                 found_power=None
                 s=s.strip()
                 if not s:
-                    return polynomial()
+                    return Polynomial()
                 opening_parenthesis=0
                 for i in range(len(s)):
                     if s[i]=='(':
@@ -76,6 +331,7 @@ class polynomial(object):
                         opening_parenthesis-=1
                     if not opening_parenthesis:
                         if s[i] in ['+','-']:
+
                             found_plus_minus=i
                         if s[i]=='*':
                             found_times=i
@@ -96,21 +352,21 @@ class polynomial(object):
                     assert s[-1]==')'
                     return eval_str(s[1:-1])
                 if s in ['i','I']:
-                    return polynomial([(1j,)])
+                    return Polynomial([(1j,)])
                 if re.match(r'[_A-Za-z][_A-Za-z0-9]*$',s):
-                    return polynomial([(1,(s,1))])
+                    return Polynomial([(1,(s,1))])
                 if re.match(r'[0-9]+$',s):
-                    return polynomial([(int(s),)])
+                    return Polynomial([(int(s),)])
                 if re.match(r'[0-9]+/[0-9]+$',s):
-                    return polynomial([(Fraction(s),)])
+                    return Polynomial([(Fraction(s),)])
                 r=re.match(r'([0-9]+\.[0-9]+)(j?)$',s)
                 if r:
                     if r.group(2):
-                        return polynomial([(complex(0,float(r.group(1))),)])
+                        return Polynomial([(complex(0,float(r.group(1))),)])
                     else:
-                        return polynomial([(float(r.group(1)),)])
+                        return Polynomial([(float(r.group(1)),)])
                     
-                raise Exception, "while parsing polynomial %s" % s
+                raise Exception, "while parsing Polynomial %s" % s
 
             self.terms=eval_str(terms).terms
         if isinstance(terms,list):
@@ -127,7 +383,7 @@ class polynomial(object):
 
     @classmethod
     def type_name(cls):
-        return "polynomial"
+        return "Polynomial"
 
     def constructor_argument(self):
         return str(self)
@@ -135,7 +391,7 @@ class polynomial(object):
     def __eq__(self,other):
         if isinstance(other,type(None)):
             return False
-        if isinstance(other,polynomial):
+        if isinstance(other,Polynomial):
             return self.terms==other.terms
         if not self.is_constant():
             return False
@@ -143,39 +399,39 @@ class polynomial(object):
         
 
     def __add__(self,other):
-        if not isinstance(other, polynomial):
-            other = polynomial(other)
-        return polynomial(self.terms+other.terms).simplify()
+        if not isinstance(other, Polynomial):
+            other = Polynomial(other)
+        return Polynomial(self.terms+other.terms).simplify()
 
     def __radd__(self,other):
         return self + other
 
     def __pow__(self,other):
         if other==0:
-            return polynomial([(1,)])
+            return Polynomial([(1,)])
         if other % 2:
             return self * self ** (other - 1)
         return (self*self) ** (other/2)
         
     def __mul__(self, other):
-        if not isinstance(other, polynomial):
-            return self * polynomial(other)
+        if not isinstance(other, Polynomial):
+            return self * Polynomial(other)
         
-        assert isinstance(other, polynomial)
+        assert isinstance(other, Polynomial)
         new_terms=[]
         for i in self.terms:
             for j in other.terms:
                 new_terms.append((i[0]*j[0],)+i[1:]+j[1:])
-        return polynomial(new_terms).simplify()
+        return Polynomial(new_terms).simplify()
 
     def __rmul__(self, other):
-        return self * polynomial(other)
+        return self * Polynomial(other)
 
     def __sub__(self,other):
-        return self+other*polynomial([(-1,)])
+        return self+other*Polynomial([(-1,)])
 
     def __repr__(self):
-        return "polynomial("+repr(self.terms)+")"
+        return "Polynomial("+repr(self.terms)+")"
 
     def __str__(self):
         res=""
@@ -198,7 +454,7 @@ class polynomial(object):
                     isinstance(term[0],Fraction)) and term[0]<0:
                     res = res + ' - '
                     coeff = [str(abs(term[0]))]
-                elif isinstance(term[0],polynomial):
+                elif isinstance(term[0],Polynomial):
                     res = res + ' + '
                     coeff = ['( ' + str(term[0]) + ' )']
                 else:
@@ -234,11 +490,11 @@ class polynomial(object):
                 new_terms[new_vars]=coeff
         all_terms=new_terms.keys()
         all_terms.sort()
-        return polynomial([(new_terms[vars],)+vars for vars in all_terms if not new_terms[vars]==0])
+        return Polynomial([(new_terms[vars],)+vars for vars in all_terms if not new_terms[vars]==0])
     
     def substitute_numerical(self,var,value=None):
         if isinstance(var,dict):
-            p=polynomial(self)
+            p=Polynomial(self)
             for var,value in var.items():
                 p=p.substitute_numerical(var,value)
             return p
@@ -249,28 +505,28 @@ class polynomial(object):
                 if the_var==var:
                     coeff = coeff*value**the_exp
             return (coeff,)+tuple([x for x in v[1:] if not x[0]==var])
-        return polynomial(map(handle_vars,self.terms)).simplify()
+        return Polynomial(map(handle_vars,self.terms)).simplify()
 
     def substitute(self,var1,var2=None):
         """
         Substitute can take two arguments or a dictionary
-        It can substitute a variable by another variable or a polynomial.
+        It can substitute a variable by another variable or a Polynomial.
 
-        >>> p = polynomial("x^3+y^3")
+        >>> p = Polynomial("x^3+y^3")
 
         Subsitute x by y
         >>> str(p.substitute("x","y"))
         '2 * y^3'
         >>> str(p.substitute({"x":"y"}))
         '2 * y^3'
-        >>> str(p.substitute("x",polynomial("y")))
+        >>> str(p.substitute("x",Polynomial("y")))
         '2 * y^3'
-        >>> str(p.substitute({"x":polynomial("y")}))
+        >>> str(p.substitute({"x":Polynomial("y")}))
         '2 * y^3'
 
         Subsitute x by a+1 and y by b+1
-        >>> str(p.substitute({"x":polynomial("a+1"),
-        ...                  "y":polynomial("b+1")}))
+        >>> str(p.substitute({"x":Polynomial("a+1"),
+        ...                  "y":Polynomial("b+1")}))
         '2 + 3 * a + 3 * a^2 + a^3 + 3 * b + 3 * b^2 + b^3'
         """
         
@@ -282,65 +538,28 @@ class polynomial(object):
 
         def new_poly(term,d=d):
             new_term=[term[0]]
-            poly=polynomial([(1,)])
+            poly=Polynomial([(1,)])
             for var,exp in term[1:]:
                 if d.has_key(var):
                     if isinstance(d[var],str):
                         new_term.append((d[var],exp))
-                    elif isinstance(d[var],polynomial):
+                    elif isinstance(d[var],Polynomial):
                         poly=poly*(d[var]**exp)
                     else:
-                        raise Exception, 'substitute: must be variable or polynomial'
+                        raise Exception, 'substitute: must be variable or Polynomial'
                 else:
                     new_term.append((var,exp))
-            if poly==polynomial([(1,)]):
+            if poly==Polynomial([(1,)]):
                 return [tuple(new_term)]
             else:
-                return (polynomial([tuple(new_term)])*poly).terms
+                return (Polynomial([tuple(new_term)])*poly).terms
             
         res=[]
         for term in self.terms:
             res=res+new_poly(term)
-        return polynomial(res).simplify()
-        raise TypeError, " in polynomial substitute"
-        
-
-    def old_substitute(self,var1,var2=None):
-        if isinstance(var1,dict):
-            assert var2==None
-            p=polynomial(self)
-            for var1,var2 in var1.items():
-                p=p.substitute(var1,var2)
-            return p
-        
-        def replace_var(term,var1=var1,var2=var2):
-            new_term=[term[0]]
-            for var,exp in term[1:]:
-                if var==var1:
-                    new_term.append((var2,exp))
-                else:
-                    new_term.append((var,exp))
-            return tuple(new_term)
-        if isinstance(var2,str):
-            return polynomial(map(replace_var,self.terms)).simplify()
-
-        def new_poly(term,var1=var1,var2=var2):
-            new_term=[term[0]]
-            poly=polynomial([(1,)])
-            for var,exp in term[1:]:
-                if var==var1:
-                    poly=poly*(var2**exp)
-                else:
-                    new_term.append((var,exp))
-            return polynomial([tuple(new_term)])*poly
+        return Polynomial(res).simplify()
+        raise TypeError, " in Polynomial substitute"
             
-        if isinstance(var2,polynomial):
-            res=polynomial()
-            for term in self.terms:
-                res=res+new_poly(term)
-            return res
-        raise TypeError, " in polynomial substitute"
-    
     def variables(self):
         vars=[]
         for term in self.terms:
@@ -407,7 +626,7 @@ class polynomial(object):
         return coeffs
 
     def __mod__(self,other):
-        assert isinstance(other,polynomial)
+        assert isinstance(other,Polynomial)
         assert other.is_univariate()
         other=other.make_monic()
         deg=other.degree()
@@ -418,10 +637,10 @@ class polynomial(object):
         for term in self.terms:
             # found the term with highest power of var
             if (var,highest_deg) in term: 
-                p=self+other*polynomial([
+                p=self+other*Polynomial([
                     (-term[0],(var,highest_deg-deg))])
                 # force this term to be zero!
-                return polynomial(
+                return Polynomial(
                     [t for t in p.terms if not t[1:]==term[1:]]) % other
             
         return self
