@@ -145,11 +145,27 @@ def parse_primary_decomposition(s_with_backslash):
         "\[([^\]]*)\]",
         s)
 
+    print "There"
+
+    print components
+
+    for dimension, tmp, nu, polys in components:
+        for p in polys.split(','):
+            print "Str"
+            print p
+            print "Poly"
+            print Polynomial.parseFromString(p)
+            print "What?"
+
     components= [
         prime_ideal(
-            l = [polynomial(p) for p in polys.split(',')],
+            l = [Polynomial.parseFromString(p) for p in polys.split(',')],
             dim = int(dimension), number_of_points = number_of_points)
         for dimension, tmp, number_of_points, polys in components]
+
+    print "asd"
+
+    print components
 
     return components
 

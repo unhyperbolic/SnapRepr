@@ -1,5 +1,6 @@
 import re
 import operator
+from fractions import Fraction
 
 #from fractions import Fraction
 #from algebra.pari import *
@@ -34,7 +35,15 @@ class Monomial(object):
 
     def __str__(self):
         return " * ".join(
-            [str(self._coefficient)] + [ "%s ^ %s" % var for var in self._vars])
+            [str(self._coefficient)] + [ "%s^%s" % var for var in self._vars])
+
+    def printWithSign(self):
+        v = [var if expo == 1 else "%s^%s" % (var, expo) for var, expo in self._vars]
+        c = printWithoutSignEmptyIfOne(self._coefficient)
+        if c: v = [c] + v
+        if not v: v = [ "1" ]
+        
+        return printedSign(self._coefficient) + " " + " * ".join(v)
 
     # Returns the coefficient
     def getCoefficient(self):
@@ -149,6 +158,11 @@ class Polynomial(object):
         return self + (-other)
 
     def __pow__(self, other):
+
+        if isinstance(other, Polynomial):
+            assert other.isConstant()
+            other = other.getConstant()
+        
         assert isinstance(other, int)
         assert other >= 0
         if other == 0:
@@ -167,7 +181,10 @@ class Polynomial(object):
         return Polynomial(tuple(monomials))
 
     def __str__(self):
-        return " + ".join([str(monomial) for monomial in self._monomials])
+        s = " ".join([monomial.printWithSign() for monomial in self._monomials])
+        if s[0] == '+':
+            return s[1:]
+        return s
 
     def __repr__(self):
         return "Polynomial(%s)" % repr(self._monomials)
@@ -203,6 +220,32 @@ class Polynomial(object):
         allVariables.sort()
         return allVariables
 
+    def isConstant(self):
+        return not self.variables()
+
+    def getConstant(self):
+        constants = [monomial.getCoefficient()
+                     for monomial in self._monomials
+                     if not monomial.getVars()]
+        assert len(constants) <= 1
+        if constants:
+            return constants[0]
+        else:
+            return 0
+
+    @classmethod
+    def parseFromString(cls, s):
+        return _parsePolynomial(s)
+
+def parseIntOrFraction(s):
+    
+    m = re.match('([0-9]+/[0-9]+)(.*)',s)
+    if m:
+        frac, rest = m.groups()
+        return Fraction(frac), rest
+    
+    return parseIntCoefficient(s)
+
 def parseIntCoefficient(s):
     coeff, rest = re.match('([0-9]*)(.*)',s).groups()
 
@@ -230,8 +273,16 @@ _operatorPrecedence = {
     '^' : 3
     }
 
-def _parseNull(s):
-    return None, s
+def printedSign(i):
+    if i > 0:
+        return '+'
+    else:
+        return '-'
+
+def printWithoutSignEmptyIfOne(i):
+    if abs(i) == 1:
+        return None
+    return str(abs(i))
 
 def _parseVariable(s):
     r = re.match(r'([_A-Za-z][_A-Za-z0-9]*)(.*)$',s)
@@ -240,12 +291,12 @@ def _parseVariable(s):
     else:
         return None, s
 
-def _parsePolynomial(s, parseCoefficient = _parseNull): # I is also a coefficient
+def _parsePolynomial(s, parseCoefficient = parseIntOrFraction): # I is also a coefficient
 
     operandStack = []
     operatorStack = []
 
-    noOperandSinceOpeningParenthesis = True
+    noOperandSinceOpeningParenthesis = [True]
 
     def debugPrint(s):
         print "=" * 75
@@ -274,22 +325,16 @@ def _parsePolynomial(s, parseCoefficient = _parseNull): # I is also a coefficien
     def processNextToken(s):
         s = s.lstrip()
 
-        intConstant, rest = parseIntCoefficient(s)
-        if intConstant:
-            operandStack.append(Polynomial.constantPolynomial(intConstant))
-            noOperandSinceOpeningParenthesis = False
-            return rest
-
         constant, rest = parseCoefficient(s)
         if constant:
             operandStack.append(Polynomial.constantPolynomial(constant))
-            noOperandSinceOpeningParenthesis = False
+            noOperandSinceOpeningParenthesis[0] = False
             return rest
 
         variable, rest = _parseVariable(s)
         if variable:
             operandStack.append(Polynomial.fromVariableName(variable))
-            noOperandSinceOpeningParenthesis = False
+            noOperandSinceOpeningParenthesis[0] = False
             return rest
 
         nextChar, rest = s[0], s[1:]
@@ -300,9 +345,9 @@ def _parsePolynomial(s, parseCoefficient = _parseNull): # I is also a coefficien
             operatorStack.append(operator)
 
             if operator in '+-':
-                if noOperandSinceOpeningParenthesis:
+                if noOperandSinceOpeningParenthesis[0]:
                     operandStack.append(Polynomial())
-                    noOperandSinceOpeningParenthesis = False
+                    noOperandSinceOpeningParenthesis[0] = False
 
             return rest
 
@@ -310,7 +355,7 @@ def _parsePolynomial(s, parseCoefficient = _parseNull): # I is also a coefficien
             parenthesis = nextChar
             if parenthesis == '(':
                 operatorStack.append('(')
-                noOperandSinceOpeningParenthesis = True
+                noOperandSinceOpeningParenthesis[0] = True
             else:
                 evalPrecedingOperatorsOnStack()
                 assert operatorStack.pop() == '('

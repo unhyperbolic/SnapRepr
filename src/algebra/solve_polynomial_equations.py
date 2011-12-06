@@ -1,6 +1,6 @@
 import numpy
 import math
-from algebra.polynomial import polynomial
+from algebra.polynomial import Polynomial
 from algebra.pari import roots_of_polynomial
 from algebra.pari import random_complex_modulos
 
@@ -29,7 +29,7 @@ def solve_polynomial_equations(polys,
             return [variable_dict]
     solutions=[]
     for i in polys:
-        assert isinstance(i,polynomial)
+        assert isinstance(i,Polynomial)
         
     univariate_polys = [poly for poly in polys if poly.is_univariate()]
     

@@ -272,7 +272,9 @@ def process_magma_output_headers(options, magma_out, magma_filename):
     try:
         prim_decomp = algebra.magma.parse_primary_decomposition(magma_out)
         csv_dict["Number Components"] = len(prim_decomp)
-    except:
+    except Exception as e:
+        print "Here..."
+        print e
         error_condition = "Could not parse primary decomposition"
         
     if not "PRIMARY=DECOMPOSITION=ENDS=HERE" in magma_out:
