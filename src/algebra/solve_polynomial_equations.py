@@ -3,6 +3,7 @@ import math
 from algebra.polynomial import Polynomial
 from algebra.pari import roots_of_polynomial
 from algebra.pari import random_complex_modulos
+from algebra.pari import number
 
 class SolverException(Exception):
     def __init__(self, message, poly_hist):
@@ -19,6 +20,8 @@ def solve_polynomial_equations(polys,
                                poly_history="",
                                variable_dict={},
                                non_linear_equation_encountered=False):
+
+    polys = [polynomial.convertCoefficients(lambda x:number(x)) for polynomial in polys]
     
     poly_history += '\n\n\n\n'+'\n'.join(map(str,polys))+'\n\n============\n'
     if not polys:
@@ -31,7 +34,7 @@ def solve_polynomial_equations(polys,
     for i in polys:
         assert isinstance(i,Polynomial)
         
-    univariate_polys = [poly for poly in polys if poly.is_univariate()]
+    univariate_polys = [poly for poly in polys if poly.isUnivariate()]
     
     poly_history=poly_history+'\n\n'+str(univariate_polys)+'\n'
     
@@ -73,8 +76,10 @@ def solve_polynomial_equations(polys,
     for value in sol:
         new_variable_dict = dict(variable_dict)
         new_variable_dict[variable_name] = value
-        new_polys = [poly.substitute_numerical(variable_name,value)
-                     for poly in polys if not poly is univariate_poly]
+        new_polys = [
+            poly.substitute(
+                {variable_name:Polynomial.constantPolynomial(value)})
+            for poly in polys if not poly is univariate_poly]
         new_solutions = solve_polynomial_equations(new_polys, free_dim,
                                                    with_poly_history,
                                                    poly_history,

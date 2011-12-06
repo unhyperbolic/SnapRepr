@@ -100,6 +100,9 @@ class Monomial(object):
             conversionFunction(self._coefficient),
             self._vars)
 
+    def degree(self):
+        return sum([expo for var, expo in self._vars])
+
 class Polynomial(object):
     
     @classmethod
@@ -233,6 +236,12 @@ class Polynomial(object):
         else:
             return 0
 
+    def isUnivariate(self):
+        return len(self.variables()) <= 1
+
+    def degree(self):
+        return max([monomial.degree() for monomial in self._monomials])
+
     @classmethod
     def parseFromString(cls, s):
         return _parsePolynomial(s)
@@ -274,12 +283,22 @@ _operatorPrecedence = {
     }
 
 def printedSign(i):
+    if isinstance(i, int):
+        return printedIntSign(i)
+    return '+'
+
+def printWithoutSignEmptyIfOne(i):
+    if isinstance(i, int):
+        return printIntWithoutSignEmptyIfOne(i)
+    return str(i)
+
+def printedIntSign(i):
     if i > 0:
         return '+'
     else:
         return '-'
 
-def printWithoutSignEmptyIfOne(i):
+def printIntWithoutSignEmptyIfOne(i):
     if abs(i) == 1:
         return None
     return str(abs(i))

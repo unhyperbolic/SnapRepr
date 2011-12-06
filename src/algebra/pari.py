@@ -54,7 +54,7 @@ def set_pari_precision(precision):
 
     _precision = precision
 
-class number:
+class number(object):
     def __init__(self, val = None, eval_this = None):
         if val == None:
             if eval_this:
@@ -172,7 +172,7 @@ class number:
             return real_part + imag_part
         
 def roots_of_polynomial(pol):
-    assert pol.is_univariate()
+    assert pol.isUnivariate()
     s=pari_eval("polroots(%s)" % str(pol))
     assert s[0]=='['
     assert s[-2:]==']~'
