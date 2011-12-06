@@ -14,7 +14,7 @@ sys.path.append(base_path)
 
 try:
     from manifold.triangulation import triangulation, read_triangulation_from_file
-    from algebra.polynomial import polynomial
+    from algebra.polynomial import Polynomial
     import manifold.slN
     import algebra.magma
     import hashlib
@@ -184,7 +184,7 @@ def write_magma_files(options, triangulation_filename):
 
         # Append an equation of the form "x * y * t -1" with dummy variable t
         # This is to prevent Ptolemy coordinates from being zero
-        eqns.append( manifold.slN.polynomial_non_zero_condition(eqns,'t') )
+        eqns.append( manifold.slN.polynomialNonZeroCondition(eqns,'t') )
 
         # Make the input for magma
         # pre_vars tells the procedure to list t in the term order used

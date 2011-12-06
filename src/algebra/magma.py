@@ -1,5 +1,5 @@
 import re
-from algebra.polynomial import polynomial
+from algebra.polynomial import Polynomial
 
 def quote_string(s):
     r = ""

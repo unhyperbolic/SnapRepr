@@ -1,154 +1,22 @@
 import re
 import operator
+
 #from fractions import Fraction
-
 #from algebra.pari import *
-
 #mathTypes
-
 #typesafeOperatorPolicy(a, b, op):
-
 #getImaginaryUnit
-
-def parseIntCoefficient(s):
-    coeff, rest = re.match('([0-9]*)(.*)',s).groups()
-
-    if coeff:
-        coeff = int(coeff)
-    else:
-        coeff = None
-    return coeff, rest
-
-_operators = {
-    '+' : operator.add,
-    '-' : operator.sub,
-    '*' : operator.mul,
-    '^' : operator.pow
-    }
-
-def _applyOperator(op, l, r):
-    return _operators[op](l,r)
-
-_operatorPrecedence = {
-    None : 0,
-    '+' : 1,
-    '-' : 1,
-    '*' : 2,
-    '^' : 3
-    }
-                
-def _parsePolynomial(s, parseCoefficient = parseIntCoefficient):
-
-    operandStack = [Polynomial()]
-    operatorStack = []
-
-    def debugPrint(s):
-        print "=" * 75
-        print "Remaining string : ", s
-        print "Operator Stack   : ", operatorStack
-        print "Operand Stack    : ", operandStack
-
-    def evalPrecedingOperatorsOnStack(operator = None):
-        while operatorStack:
-            topOperator = operatorStack[-1]
-            
-            if topOperator == '(':
-                return
-            
-            if (_operatorPrecedence[topOperator] <
-                _operatorPrecedence[operator]):
-                return
-            
-            topOperator = operatorStack.pop()
-            r = operandStack.pop()
-            l = operandStack.pop()
-
-            operandStack.append(
-                _applyOperator(topOperator, l, r))
-
-    def processNextToken(s):
-        s = s.lstrip()
-
-        operand, rest = parseCoefficient(s)
-        if operand:
-            operandStack.append(operand)
-            return rest
-
-        nextChar, rest = s[0], s[1:]
-        
-        if nextChar in _operators.keys():
-            operator = nextChar
-            evalPrecedingOperatorsOnStack(operator)
-            operatorStack.append(operator)
-            return rest
-
-        if nextChar in '()':
-            parenthesis = nextChar
-            if parenthesis == '(':
-                operatorStack.append('(')
-            else:
-                evalPrecedingOperatorsOnStack()
-                assert operatorStack.pop() == '('
-            return rest
-
-        raise "WTF?"
-
-    s = s.strip()
-    while s:
-        # debugPrint(s)
-        s = processNextToken(s)
-
-    # debugPrint(s)
-    evalPrecedingOperatorsOnStack(None)
-
-    # debugPrint(s)
-
-    assert not operatorStack
-    assert (len(operandStack) == 1
-            or (
-                len(operandStack) == 2 and
-                operandStack[0] == Polynomial())) 
-
-    return operandStack[-1]
-
-# This implements our type policy for multiplication
-# Allowed:
-#      multiplying two objects of same type
-#      multiplying by an integer (from either left or right)
-#
-# If multiplying with an integer, the integer is cast to the type
-# of the other factor.
-
-def _typesafeMultiply(a, b):
-    if type(a) == type(b):
-        return a * b
-    if type(a) == int:
-        return type(b)(a) * b
-    if type(b) == int:
-        return a * type(a)(b)
-    raise Exception, "Cannot multiply two different types"
-
-def _combineDicts(listOfDicts, combineFunction):
-    result = {}
-    for aDict in listOfDicts:
-        for k, v in a.Dict.items():
-            if result.has_key(k):
-                result[k] = combineFunction(result[k], v)
-            else:
-                result[k] = v
-    return result
-
-def _dictToOrderedTupleOfPairs(d):
-    l = d.items()
-    l.sort(key = lambda x:x[0])
-    return tuple(l)
 
 class Monomial(object):
 
     # Given a string as variable name, constructs the corresponding monomial
     @classmethod
-    def fromVariableName(var):
+    def fromVariableName(cls, var):
         return Monomial(1, ((var, 1),))
+
+    @classmethod
+    def constantMonomial(cls, coefficient):
+        return Monomial(coefficient, ())
 
     # Constructor
     def __init__(self, coefficient, vars):
@@ -156,13 +24,17 @@ class Monomial(object):
         >>> Monomial(2, (('a', 2), ('b', 3)))
         """
 
-        self._coefficient = _coefficient
+        self._coefficient = coefficient
 
         if isinstance(vars, dict):
             self._vars = _dictToOrderedTupleOfPairs(vars)
         else:
             assert isinstance(vars, tuple)
             self._vars = vars
+
+    def __str__(self):
+        return " * ".join(
+            [str(self._coefficient)] + [ "%s ^ %s" % var for var in self._vars])
 
     # Returns the coefficient
     def getCoefficient(self):
@@ -193,10 +65,14 @@ class Monomial(object):
         coefficient = _typesafeMultiply(self._coefficient, other._coefficient)
 
         # Compute the variables
-        varDict = _combineDicts([self._vars,other._vars],
+        varDict = _combineDicts([dict(self._vars),dict(other._vars)],
                                 lambda x,y: x + y)
 
         return Monomial(coefficient, varDict)
+
+    # Negate a monomial
+    def __neg__(self):
+        return Monomial(-self._coefficient, self._vars)
 
     # Check whether two monomials are equal
     def __eq__(self,other):
@@ -207,8 +83,24 @@ class Monomial(object):
             self._coefficient == other._coefficient and
             self._vars == other._vars)
 
+    def __repr__(self):
+        return "Monomial(%s, %s)" % (self._coefficient, self._vars)
+
+    def convertCoefficient(self, conversionFunction):
+        return Monomial(
+            conversionFunction(self._coefficient),
+            self._vars)
+
 class Polynomial(object):
     
+    @classmethod
+    def constantPolynomial(cls,constant):
+        return Polynomial( (Monomial.constantMonomial(constant),))
+
+    @classmethod
+    def fromVariableName(cls,var):
+        return Polynomial( (Monomial.fromVariableName(var),))
+
     def __init__(self, monomials = ()):
 
         # combine monomials with the same variables and exponents
@@ -221,7 +113,7 @@ class Polynomial(object):
         # and value being the coefficient
 
         listOfVarsCoeffDicts = [
-            { monomial.getVars() : monomial.getCoeffcient() }
+            { monomial.getVars() : monomial.getCoefficient() }
             for monomial in monomials]
 
         # combine the dictionaries using sum
@@ -249,15 +141,231 @@ class Polynomial(object):
         assert isinstance(other, Polynomial)
         return Polynomial(self._monomials + other._monomials)
 
+    def __neg__(self):
+        return Polynomial(
+            tuple([-monomial for monomial in self._monomials]))
+
+    def __sub__(self, other):
+        return self + (-other)
+
+    def __pow__(self, other):
+        assert isinstance(other, int)
+        assert other >= 0
+        if other == 0:
+            return Polynomial((Monomial.constantMonomial(1),))
+        if other % 2 == 1:
+            return self * (self ** (other-1))
+        return (self * self) ** (other/2)
+
     def __mul__(self, other):
         monomials = []
         
         for m in self._monomials:
-            for n in self._monomials:
+            for n in other._monomials:
                 monomials.append(m * n)
                 
-        return Polynomial(monomials)
+        return Polynomial(tuple(monomials))
 
+    def __str__(self):
+        return " + ".join([str(monomial) for monomial in self._monomials])
+
+    def __repr__(self):
+        return "Polynomial(%s)" % repr(self._monomials)
+
+    def convertCoefficients(self, conversionFunction):
+        return Polynomial(
+            tuple([monomial.convertCoefficient(conversionFunction)
+                   for monomial in self._monomials]))
+
+    def substitute(self, d):
+        # dictionary variable -> Polynomial
+
+        def substituteMonomial(monomial):
+            vars = monomial.getVars()
+            newVars = []
+            poly = Polynomial.constantPolynomial(1)
+            for var, expo in vars:
+                if d.has_key(var):
+                    poly = poly * (d[var] ** expo)
+                else:
+                    newVars.append((var,expo))
+            return poly * Polynomial((
+                Monomial(monomial.getCoefficient(),
+                          tuple(newVars)),))
+
+        return sum([substituteMonomial(monomial)
+                     for monomial in self._monomials], Polynomial(()))
+                                    
+    def variables(self):
+        allVariables = [monomial.variables() for monomial in self._monomials]
+        allVariables = sum(allVariables, [])
+        allVariables = list(set(allVariables))
+        allVariables.sort()
+        return allVariables
+
+def parseIntCoefficient(s):
+    coeff, rest = re.match('([0-9]*)(.*)',s).groups()
+
+    if coeff:
+        coeff = int(coeff)
+    else:
+        coeff = None
+    return coeff, rest
+
+_operators = {
+    '+' : operator.add,
+    '-' : operator.sub,
+    '*' : operator.mul,
+    '^' : operator.pow
+    }
+
+def _applyOperator(op, l, r):
+    return _operators[op](l,r)
+
+_operatorPrecedence = {
+    None : 0,
+    '+' : 1,
+    '-' : 1,
+    '*' : 2,
+    '^' : 3
+    }
+
+def _parseNull(s):
+    return None, s
+
+def _parseVariable(s):
+    r = re.match(r'([_A-Za-z][_A-Za-z0-9]*)(.*)$',s)
+    if r:
+        return r.groups()
+    else:
+        return None, s
+
+def _parsePolynomial(s, parseCoefficient = _parseNull): # I is also a coefficient
+
+    operandStack = []
+    operatorStack = []
+
+    noOperandSinceOpeningParenthesis = True
+
+    def debugPrint(s):
+        print "=" * 75
+        print "Remaining string : ", s
+        print "Operator Stack   : ", operatorStack
+        print "Operand Stack    : ", operandStack
+
+    def evalPrecedingOperatorsOnStack(operator = None):
+        while operatorStack:
+            topOperator = operatorStack[-1]
+            
+            if topOperator == '(':
+                return
+            
+            if (_operatorPrecedence[topOperator] <
+                _operatorPrecedence[operator]):
+                return
+            
+            topOperator = operatorStack.pop()
+            r = operandStack.pop()
+            l = operandStack.pop()
+
+            operandStack.append(
+                _applyOperator(topOperator, l, r))
+
+    def processNextToken(s):
+        s = s.lstrip()
+
+        intConstant, rest = parseIntCoefficient(s)
+        if intConstant:
+            operandStack.append(Polynomial.constantPolynomial(intConstant))
+            noOperandSinceOpeningParenthesis = False
+            return rest
+
+        constant, rest = parseCoefficient(s)
+        if constant:
+            operandStack.append(Polynomial.constantPolynomial(constant))
+            noOperandSinceOpeningParenthesis = False
+            return rest
+
+        variable, rest = _parseVariable(s)
+        if variable:
+            operandStack.append(Polynomial.fromVariableName(variable))
+            noOperandSinceOpeningParenthesis = False
+            return rest
+
+        nextChar, rest = s[0], s[1:]
+        
+        if nextChar in _operators.keys():
+            operator = nextChar
+            evalPrecedingOperatorsOnStack(operator)
+            operatorStack.append(operator)
+
+            if operator in '+-':
+                if noOperandSinceOpeningParenthesis:
+                    operandStack.append(Polynomial())
+                    noOperandSinceOpeningParenthesis = False
+
+            return rest
+
+        if nextChar in '()':
+            parenthesis = nextChar
+            if parenthesis == '(':
+                operatorStack.append('(')
+                noOperandSinceOpeningParenthesis = True
+            else:
+                evalPrecedingOperatorsOnStack()
+                assert operatorStack.pop() == '('
+            return rest
+
+        raise Exception, "While parsing polynomial %s" % s
+
+    s = s.strip()
+    while s:
+        # debugPrint(s)
+        s = processNextToken(s)
+
+    # debugPrint(s)        
+    evalPrecedingOperatorsOnStack(None)
+    # debugPrint(s)
+
+    assert not operatorStack
+    assert (len(operandStack) == 1
+            or (
+                len(operandStack) == 2 and
+                operandStack[0] == Polynomial())) 
+
+    return operandStack[-1]
+
+# This implements our type policy for multiplication
+# Allowed:
+#      multiplying two objects of same type
+#      multiplying by an integer (from either left or right)
+#
+# If multiplying with an integer, the integer is cast to the type
+# of the other factor.
+
+def _typesafeMultiply(a, b):
+    if type(a) == type(b):
+        return a * b
+    if type(a) == int:
+        return type(b)(a) * b
+    if type(b) == int:
+        return a * type(a)(b)
+    raise Exception, "Cannot multiply two different types"
+
+def _combineDicts(listOfDicts, combineFunction):
+    result = {}
+    for aDict in listOfDicts:
+        for k, v in aDict.items():
+            if result.has_key(k):
+                result[k] = combineFunction(result[k], v)
+            else:
+                result[k] = v
+    return result
+
+def _dictToOrderedTupleOfPairs(d):
+    l = d.items()
+    l.sort(key = lambda x:x[0])
+    return tuple(l)
 
 class OldPolynomial(object): ### allows multiplication with integers
     def __init__(self,terms=[]):

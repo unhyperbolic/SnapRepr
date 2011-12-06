@@ -10,7 +10,7 @@ from manifold.obstruction_class import cohomology_2_rel_boundary_classes
 from manifold.obstruction_class import cohomology_2_rel_boundary_class_to_coeffs
 from manifold.bloch_group import Ptolemy_cochain
 from algebra.field_p import field_p
-from algebra.polynomial import polynomial
+from algebra.polynomial import Polynomial
 from algebra.pari import pari_eval, pari_eval_bool, number, get_pari_allowed_error, NumericalError
 
 from fractions import Fraction
@@ -70,12 +70,12 @@ class equivalence_with_sign:
         return dict([(k,canonical_representative(v)) for k,v in self.d.items()])
 
     def dict_canonical_representatives_poly(self):
-        def turn_pair_to_polynomial(p):
+        def turn_pair_to_Polynomial(p):
             if p[0] == +1:
-                return polynomial(p[1])
+                return Polynomial.fromVariableName(p[1])
             else:
-                return polynomial()-polynomial(p[1])
-        return dict([(k,turn_pair_to_polynomial(v)) for k,v in self.dict_canonical_representatives().items()])
+                return -Polynomial.fromVariableName(p[1])
+        return dict([(k,turn_pair_to_Polynomial(v)) for k,v in self.dict_canonical_representatives().items()])
 
     def pretty_print(self):
         d = self.dict_canonical_representatives()
@@ -164,9 +164,10 @@ def c_parameter_var(coords, tet_index):
 
 def c_parameter(coords, tet_index):
     """
-    Same as c_parameter_var but returns it as polynomial type.
+    Same as c_parameter_var but returns it as Polynomial type.
     """
-    return polynomial(c_parameter_var(coords, tet_index))
+    return Polynomial.fromVariableName(
+        c_parameter_var(coords, tet_index))
 
 def get_all_obstruction_classes(t):
     """
@@ -206,6 +207,9 @@ def get_Ptolemy_relations(t, N, cohomology_class = None):
         else:
             sign_01 = +1
             sign_12 = +1
+
+        sign_01 = Polynomial.constantPolynomial(sign_01)
+        sign_12 = Polynomial.constantPolynomial(sign_12)
 
         for coord in simplex_coords_with_fixed_sum(4, N-2):
             eqns.append(
@@ -266,7 +270,9 @@ def get_additional_eqns_independent(t, N):
 
     variables = find_independent_integer_vectors(d)
     
-    return [polynomial(var) - 1 for var in variables]
+    return [
+        Polynomial.fromVariableName(var) - Polynomial.constantPolynomial(1) 
+        for var in variables]
 
 def get_additional_eqns_manual(t, N):
     # sets any additional terms to one
@@ -274,19 +280,19 @@ def get_additional_eqns_manual(t, N):
     eqns = []
 
     if N == 2:
-        eqns.append(polynomial("c_1100_0") - 1)
+        eqns.append(Polynomial("c_1100_0") - 1)
     elif N == 3:
-        eqns.append(polynomial("c_2100_0") - 1)
-        eqns.append(polynomial("c_1110_0") - 1)
+        eqns.append(Polynomial("c_2100_0") - 1)
+        eqns.append(Polynomial("c_1110_0") - 1)
     elif N == 4:
-        eqns.append(polynomial("c_3100_0") - 1)
-        eqns.append(polynomial("c_2200_0") - 1)
-        eqns.append(polynomial("c_2110_0") - 1)
+        eqns.append(Polynomial("c_3100_0") - 1)
+        eqns.append(Polynomial("c_2200_0") - 1)
+        eqns.append(Polynomial("c_2110_0") - 1)
     elif N == 5:
-        eqns.append(polynomial("c_4100_0") - 1)
-        eqns.append(polynomial("c_3110_0") - 1)
-        eqns.append(polynomial("c_2111_0") - 1)
-        eqns.append(polynomial("c_2210_0") - 1)
+        eqns.append(Polynomial("c_4100_0") - 1)
+        eqns.append(Polynomial("c_3110_0") - 1)
+        eqns.append(Polynomial("c_2111_0") - 1)
+        eqns.append(Polynomial("c_2210_0") - 1)
     else:
         raise "Not yet implemented"
            
@@ -341,22 +347,22 @@ def identify_c_parameters(eqns, e):
 def get_all_variables(poly_list):
     variables = []
     for p in poly_list:
-        assert isinstance(p, polynomial)
+        assert isinstance(p, Polynomial)
         variables = variables + p.variables()
     variables = list(set(variables))
     variables.sort()
     return variables
 
-def polynomial_non_zero_condition(eqns, var):
+def polynomialNonZeroCondition(eqns, var):
     variables = get_all_variables(eqns)
 
     eqns = [e for e in eqns]
 
-    prod = polynomial(1)
+    prod = Polynomial.constantPolynomial(1)
     for i in variables + [var]:
-        prod = prod * polynomial(i)
+        prod = prod * Polynomial.fromVariableName(i)
 
-    return prod - 1
+    return prod - Polynomial.constantPolynomial(1)
 
 # Part II
 # Procedures needed to process the solutions of the Ptolemy variety
