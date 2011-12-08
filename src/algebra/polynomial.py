@@ -10,16 +10,21 @@ from fractions import Fraction
 
 class Monomial(object):
 
-    # Given a string as variable name, constructs the corresponding monomial
+    # Construct a monomial with a single vairable given as string
     @classmethod
     def fromVariableName(cls, var):
+        assert isinstance(var, str)
         return Monomial(1, ((var, 1),))
 
+    # Constructs a constant monomial
     @classmethod
     def constantMonomial(cls, coefficient):
         return Monomial(coefficient, ())
 
-    # Constructor
+    # Constructor takes
+    # * a number type as coefficient
+    # * a list of pairs (variableName, exponent) sorted by variableName or
+    #         a dictionary variableName -> exponent
     def __init__(self, coefficient, vars):
         """
         >>> Monomial(2, (('a', 2), ('b', 3)))
