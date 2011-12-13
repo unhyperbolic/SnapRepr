@@ -1,4 +1,5 @@
 import fractions
+from algebra.polynomial import uncomparablePrintCoefficientMethod
 
 lib_err = False
 
@@ -173,7 +174,9 @@ class number(object):
         
 def roots_of_polynomial(pol):
     assert pol.isUnivariate()
-    s=pari_eval("polroots(%s)" % str(pol))
+    s=pari_eval("polroots(%s)" % pol.printMagma(
+        printCoefficientMethod = uncomparablePrintCoefficientMethod
+        ))
     assert s[0]=='['
     assert s[-2:]==']~'
     sol=[number(x) for x in s[1:-2].split(',')]

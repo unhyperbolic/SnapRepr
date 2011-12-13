@@ -2,11 +2,48 @@ import re
 import operator
 from fractions import Fraction
 
-#from fractions import Fraction
-#from algebra.pari import *
-#mathTypes
-#typesafeOperatorPolicy(a, b, op):
-#getImaginaryUnit
+
+###############################################################
+### Default functions for parsing and printing the coefficients
+
+### The user will rewrite these for other types and supply to
+### the respective methods of Monomial and Polynomial.
+
+### When parsing complex numbers such as 4.5 + 3.6 * I, the parsing
+### method should also recognize "I" and return the imaginary unit then.
+
+def parseIntCoefficient(s):
+    coeff, rest = re.match('([0-9]*)(.*)',s).groups()
+    if coeff:
+        coeff = int(coeff)
+    else:
+        coeff = None
+    return coeff, rest
+
+def parseIntOrFraction(s):
+    m = re.match('([0-9]+/[0-9]+)(.*)',s)
+    if m:
+        frac, rest = m.groups()
+        return Fraction(frac), rest
+    
+    return parseIntCoefficient(s)
+
+def defaultPrintCoefficientMethod(i):
+    sign = '+' if i >= 0 else '-'
+    printStr = str(abs(i))
+    return sign, printStr
+
+def uncomparablePrintCoefficientMethod(i):
+    printStr = str(i)
+    if '+' in printStr or '-' in printStr:
+        return '+', '(%s)' % printStr
+    else:
+        return '+', printStr
+
+#######################################################
+### Public Definitions of Monomial and Polynomial class
+
+### Definition of Monomial Class
 
 class Monomial(object):
 
@@ -39,17 +76,29 @@ class Monomial(object):
             self._vars = vars
 
     def __str__(self):
-        return " * ".join(
-            [str(self._coefficient)] + [ "%s^%s" % var for var in self._vars])
+        return self.printMagma()
 
-    def printWithSign(self):
-        v = [var if expo == 1 else "%s^%s" % (var, expo) for var, expo in self._vars]
-        c = printWithoutSignEmptyIfOne(self._coefficient)
-        if c: v = [c] + v
+    def printMagma(self, 
+                   printCoefficientMethod = defaultPrintCoefficientMethod, 
+                   forcePrintSign = False):
+
+        v = [     var if expo == 1 
+             else "%s^%s" % (var, expo) 
+             for var, expo in self._vars]
+
+        coefficientSign, coefficientStr = (
+            printCoefficientMethod(self._coefficient))
+
+        if coefficientStr: v = [coefficientStr] + v
         if not v: v = [ "1" ]
-        
-        return printedSign(self._coefficient) + " " + " * ".join(v)
 
+        signLessStr = " * ".join(v)
+
+        if forcePrintSign or coefficientSign == "-":
+            return coefficientSign + " " + signLessStr
+
+        return signLessStr
+        
     # Returns the coefficient
     def getCoefficient(self):
         return self._coefficient
@@ -75,12 +124,13 @@ class Monomial(object):
         
         assert isinstance(other, Monomial)
 
-        # Determine the coefficient
-        coefficient = _typesafeMultiply(self._coefficient, other._coefficient)
+        # Compute coefficient
+        coefficient = _operatorTypePolicy(
+            self._coefficient, other._coefficient, operator.mul)
 
         # Compute the variables
         varDict = _combineDicts([dict(self._vars),dict(other._vars)],
-                                lambda x,y: x + y)
+                                operator.add)
 
         return Monomial(coefficient, varDict)
 
@@ -107,6 +157,8 @@ class Monomial(object):
 
     def degree(self):
         return sum([expo for var, expo in self._vars])
+
+### Definition of Polynomial class
 
 class Polynomial(object):
     
@@ -135,7 +187,7 @@ class Polynomial(object):
 
         # combine the dictionaries using sum
         combinedVarsCoeffDict = _combineDicts(listOfVarsCoeffDicts,
-                                              lambda x, y: x + y)
+                                              _operatorTypePolicy)
 
         # turn dictionary into a list of pairs (vars, coefficient)
         # in canonical order
@@ -189,9 +241,15 @@ class Polynomial(object):
         return Polynomial(tuple(monomials))
 
     def __str__(self):
-        s = " ".join([monomial.printWithSign() for monomial in self._monomials])
+        return self.printMagma()
+
+    def printMagma(self,
+                   printCoefficientMethod = defaultPrintCoefficientMethod):
+        s = " ".join([monomial.printMagma(printCoefficientMethod,
+                                          forcePrintSign = True)
+                      for monomial in self._monomials])
         if s[0] == '+':
-            return s[1:]
+            return s[1:].lstrip()
         return s
 
     def __repr__(self):
@@ -245,29 +303,49 @@ class Polynomial(object):
         return len(self.variables()) <= 1
 
     def degree(self):
-        return max([monomial.degree() for monomial in self._monomials])
+        return max([monomial.degree() for monomial in self._monomials] + [0])
 
     @classmethod
-    def parseFromString(cls, s):
-        return _parsePolynomial(s)
+    def parseFromMagma(cls, s, parseCoefficientFunction = parseIntOrFraction):
+        return _parsePolynomialFromMagma(s, parseCoefficientFunction)
 
-def parseIntOrFraction(s):
+    def coefficientType(self):
+        theType = int
+        for monomial in self._monomials:
+            theType = _storageTypePolicy(theType, type(monomial))
+        return theType
+
+
+##############################################################################
+### Private Definitions
+
+### Methods defining what coefficient types can be mixed a polynomial
+### Type Mixing Policy: only int can be mixed with another type
+
+def _storageTypePolicy(typeA, typeB):
+    assert isinstance(typeA, type)
+    assert isinstance(typeB, type)
     
-    m = re.match('([0-9]+/[0-9]+)(.*)',s)
-    if m:
-        frac, rest = m.groups()
-        return Fraction(frac), rest
+    if typeA == int:
+        return typeB
+    if typeB == int:
+        return typeA
+
+    assert typeA == typeB
+
+    return typeA
+
+def _operatorTypePolicy(objA, objB, op = operator.add):
+    if type(objA) == type(objB):
+        return op(objA, objB)
+    if type(objA) == int:
+        return op(type(objB)(objA), objB)
+    if type(objB) == int:
+        return op(type(objA)(objB), objA)
     
-    return parseIntCoefficient(s)
+    raise Exception, "In _operatoreTypePolicy, cannot apply operator"
 
-def parseIntCoefficient(s):
-    coeff, rest = re.match('([0-9]*)(.*)',s).groups()
-
-    if coeff:
-        coeff = int(coeff)
-    else:
-        coeff = None
-    return coeff, rest
+### Definitions of parsable operators and their precedence
 
 _operators = {
     '+' : operator.add,
@@ -275,9 +353,6 @@ _operators = {
     '*' : operator.mul,
     '^' : operator.pow
     }
-
-def _applyOperator(op, l, r):
-    return _operators[op](l,r)
 
 _operatorPrecedence = {
     None : 0,
@@ -287,26 +362,10 @@ _operatorPrecedence = {
     '^' : 3
     }
 
-def printedSign(i):
-    if isinstance(i, int):
-        return printedIntSign(i)
-    return '+'
+def _applyOperator(op, l, r):
+    return _operators[op](l,r)
 
-def printWithoutSignEmptyIfOne(i):
-    if isinstance(i, int):
-        return printIntWithoutSignEmptyIfOne(i)
-    return str(i)
-
-def printedIntSign(i):
-    if i > 0:
-        return '+'
-    else:
-        return '-'
-
-def printIntWithoutSignEmptyIfOne(i):
-    if abs(i) == 1:
-        return None
-    return str(abs(i))
+### Helper functions for parsing
 
 def _parseVariable(s):
     r = re.match(r'([_A-Za-z][_A-Za-z0-9]*)(.*)$',s)
@@ -315,7 +374,9 @@ def _parseVariable(s):
     else:
         return None, s
 
-def _parsePolynomial(s, parseCoefficient = parseIntOrFraction): # I is also a coefficient
+### Parsing function for Polynomial
+
+def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
 
     operandStack = []
     operatorStack = []
@@ -404,22 +465,7 @@ def _parsePolynomial(s, parseCoefficient = parseIntOrFraction): # I is also a co
 
     return operandStack[-1]
 
-# This implements our type policy for multiplication
-# Allowed:
-#      multiplying two objects of same type
-#      multiplying by an integer (from either left or right)
-#
-# If multiplying with an integer, the integer is cast to the type
-# of the other factor.
-
-def _typesafeMultiply(a, b):
-    if type(a) == type(b):
-        return a * b
-    if type(a) == int:
-        return type(b)(a) * b
-    if type(b) == int:
-        return a * type(a)(b)
-    raise Exception, "Cannot multiply two different types"
+### Other helper functions
 
 def _combineDicts(listOfDicts, combineFunction):
     result = {}
@@ -435,6 +481,10 @@ def _dictToOrderedTupleOfPairs(d):
     l = d.items()
     l.sort(key = lambda x:x[0])
     return tuple(l)
+
+
+
+
 
 class OldPolynomial(object): ### allows multiplication with integers
     def __init__(self,terms=[]):

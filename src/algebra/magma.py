@@ -143,7 +143,7 @@ def parse_primary_decomposition(s_with_backslash):
 
     components= [
         prime_ideal(
-            l = [Polynomial.parseFromString(p) for p in polys.split(',')],
+            l = [Polynomial.parseFromMagma(p) for p in polys.split(',')],
             dim = int(dimension), number_of_points = number_of_points)
         for dimension, tmp, number_of_points, polys in components]
 

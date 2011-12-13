@@ -1,5 +1,5 @@
-from cmath import exp,pi,phase
-import cmath
+#from cmath import exp,pi,phase
+#import cmath
 import re
 import math
 import algebra.polynomial
@@ -8,8 +8,8 @@ from algebra.pari import *
 class DegenerateSimplexException(Exception):
     pass
     
-class Ptolemy_cochain:
-    def __init__(self,sign, c01, c02, c03, c12, c13, c23, no_check = False):
+class PtolemyCochain:
+    def __init__(self, sign, c01, c02, c03, c12, c13, c23, no_check = False):
         self.sign = sign
         self.c01 = c01
         self.c02 = c02
@@ -18,12 +18,14 @@ class Ptolemy_cochain:
         self.c13 = c13
         self.c23 = c23
 
-        if no_check:
-            return
+        if not no_check:
+            self.checkConsistency()
+
+    def checkConsistency(self):
         
-        c01c23 = c01 * c23
-        c02c13 = c02 * c13
-        c03c12 = c03 * c12
+        c01c23 = self.c01 * self.c23
+        c02c13 = self.c02 * self.c13
+        c03c12 = self.c03 * self.c12
 
         if not ( ((- c03c12 - c01c23 + c02c13).abs() < get_pari_allowed_error()) or
                  ((- c03c12 + c01c23 + c02c13).abs() < get_pari_allowed_error()) or
@@ -35,31 +37,32 @@ class Ptolemy_cochain:
                       (- c03c12 + c01c23 + c02c13).abs(),
                       (c03c12 - c01c23 + c02c13).abs(),
                       (  c03c12 + c01c23 + c02c13).abs()],
-                msg = "Ptolemy_cochain(%s,%s,%s,%s,%s,%s)" %
-                (c01, c02, c03, c12, c13, c23))
+                msg = "PtolemyCochain(%s,%s,%s,%s,%s,%s)" %
+                ( self.c01, self.c02, self.c03,
+                  self.c12, self.c13, self.c23))
 
-def log_square(c):
+def logOfSquare(c):
     csquare = c * c
 
     if not ((csquare.real() > 0 or
              csquare.imag().abs() > get_pari_allowed_error())):
-        raise NumericalError(c, msg = "log_square near branch cut")
+        raise NumericalError(c, msg = "logOfSqaure near branch cut")
 
     return csquare.log() / 2
  
 class w_triple:
     def __init__(self, P, no_check = False):
-        assert isinstance(P, Ptolemy_cochain)
+        assert isinstance(P, PtolemyCochain)
         self.sign = P.sign
 
-        self.w0 = log_square(P.c03) + log_square(P.c12) - log_square(P.c02) - log_square(P.c13)
-        self.w1 = log_square(P.c02) + log_square(P.c13) - log_square(P.c01) - log_square(P.c23)
+        self.w0 = logOfSquare(P.c03) + logOfSquare(P.c12) - logOfSquare(P.c02) - logOfSquare(P.c13)
+        self.w1 = logOfSquare(P.c02) + logOfSquare(P.c13) - logOfSquare(P.c01) - logOfSquare(P.c23)
 
         if no_check:
             self.w2 = - (self.w0 + self.w1)
             return
 
-        self.w2 = log_square(P.c01) + log_square(P.c23) - log_square(P.c03) - log_square(P.c12)
+        self.w2 = logOfSquare(P.c01) + logOfSquare(P.c23) - logOfSquare(P.c03) - logOfSquare(P.c12)
 
         w0_e = self.w0.exp()
         w1_e = (-self.w1).exp()

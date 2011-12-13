@@ -1,6 +1,6 @@
 import numpy
 import math
-from algebra.polynomial import Polynomial
+from algebra.polynomial import Polynomial, uncomparablePrintCoefficientMethod
 from algebra.pari import roots_of_polynomial
 from algebra.pari import random_complex_modulos
 from algebra.pari import number
@@ -12,6 +12,10 @@ class SolverException(Exception):
     def __str__(self):
         return self.msg + "\nHistory of polynomials:\n" + self.poly_hist
 
+def _printPoly(p):
+    return p.printMagma(
+        printCoefficientMethod = uncomparablePrintCoefficientMethod)
+
 # fills free variables with random values
 
 def solve_polynomial_equations(polys,
@@ -21,9 +25,9 @@ def solve_polynomial_equations(polys,
                                variable_dict={},
                                non_linear_equation_encountered=False):
 
-    polys = [polynomial.convertCoefficients(lambda x:number(x)) for polynomial in polys]
+    polys = [polynomial.convertCoefficients(number) for polynomial in polys]
     
-    poly_history += '\n\n\n\n'+'\n'.join(map(str,polys))+'\n\n============\n'
+    poly_history += '\n\n\n\n'+'\n'.join(map(_printPoly,polys))+'\n\n============\n'
     if not polys:
         assert free_dim == 0
         if with_poly_history:
@@ -36,7 +40,7 @@ def solve_polynomial_equations(polys,
         
     univariate_polys = [poly for poly in polys if poly.isUnivariate()]
     
-    poly_history=poly_history+'\n\n'+str(univariate_polys)+'\n'
+    poly_history=poly_history+'\n\n'+str(map(_printPoly,univariate_polys))+'\n'
     
     if univariate_polys:
         univariate_poly = univariate_polys[0]

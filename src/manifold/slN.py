@@ -8,7 +8,7 @@
 
 from manifold.obstruction_class import cohomology_2_rel_boundary_classes
 from manifold.obstruction_class import cohomology_2_rel_boundary_class_to_coeffs
-from manifold.bloch_group import Ptolemy_cochain
+from manifold.bloch_group import PtolemyCochain
 from algebra.field_p import field_p
 from algebra.polynomial import Polynomial
 from algebra.pari import pari_eval, pari_eval_bool, number, get_pari_allowed_error, NumericalError
@@ -395,7 +395,7 @@ def get_Ptolemy_cochain(t, N, c_params, no_check = False):
     for i, tet in zip(range(len(t.tet_list)), t.tet_list):
         for coord in K:
             elements.append(
-                Ptolemy_cochain(
+                PtolemyCochain(
                     sign = (+1 if tet.positive_orientation else -1),
                     c01 = c_params[c_parameter_var(coord+(1,1,0,0),i)],
                     c02 = c_params[c_parameter_var(coord+(1,0,1,0),i)],
@@ -497,7 +497,7 @@ def check_solution_identification(t, N, solution):
                                              msg = "in identifying equations")
 
 
-def c_param_elements(t, N, solution):
+def old___c_param_elements(t, N, solution):
     
     t.check_consistency()
 
@@ -518,7 +518,7 @@ def c_param_elements(t, N, solution):
     return elements
 
 
-def complex_volume_old_and_obsolete(t, N, solution):
+def old___complex_volume_old_and_obsolete(t, N, solution):
 
     complex_volume = 0.0 + 0.0j
 
@@ -529,7 +529,7 @@ def complex_volume_old_and_obsolete(t, N, solution):
 
     return complex_volume / 1.0j
 
-def complex_volume2_old_and_obsolete(t, N, solution):
+def old___complex_volume2_old_and_obsolete(t, N, solution):
 
     complex_volume = number("0.0 + 0.0 * I")
 
@@ -544,7 +544,7 @@ def complex_volume2_old_and_obsolete(t, N, solution):
 
     return complex_volume / number(eval_this="I")
 
-def volume2_old_and_Obsolete(t, N, solution):
+def old___volume2_old_and_Obsolete(t, N, solution):
 
     volume = number("0.0")
 
@@ -560,7 +560,7 @@ def volume2_old_and_Obsolete(t, N, solution):
     return volume
     
 
-def volume_old_and_obsolete(t, N, solution):
+def old___volume_old_and_obsolete(t, N, solution):
     
     volume = 0.0
 
@@ -572,7 +572,7 @@ def volume_old_and_obsolete(t, N, solution):
     return volume
     
     
-class Ptolemy_simplex:
+class old___Ptolemy_simplex:
     def __init__(self,c01,c02,c03,c12,c13,c23,sign=+1):
         self.c01 = c01
         self.c02 = c02
