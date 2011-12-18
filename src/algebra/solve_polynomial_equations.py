@@ -5,6 +5,10 @@ from algebra.pari import roots_of_polynomial
 from algebra.pari import random_complex_modulos
 from algebra.pari import number
 
+import globals
+
+globals.registerSetting("solvePolynomialEquationsLog", True)
+
 class SolverException(Exception):
     def __init__(self, message, poly_hist):
         self.poly_hist = poly_hist
@@ -18,16 +22,17 @@ def _printPoly(p):
 
 # fills free variables with random values
 
-def solve_polynomial_equations(polys,
-                               free_dim = 0,
-                               with_poly_history = False,
-                               poly_history="",
-                               variable_dict={},
-                               non_linear_equation_encountered=False):
-
-    polys = [polynomial.convertCoefficients(number) for polynomial in polys]
+def solvePolynomialEquations(polys,
+                             free_dim = 0,
+                             with_poly_history = False,
+                             poly_history="",
+                             variable_dict={},
+                             non_linear_equation_encountered=False):
     
-    poly_history += '\n\n\n\n'+'\n'.join(map(_printPoly,polys))+'\n\n============\n'
+    polys = [polynomial.convertCoefficients(number) for polynomial in polys]
+
+    if globals.getSetting("solvePolynomialEquationsLog"):
+        poly_history += '\n\n\n\n'+'\n'.join(map(_printPoly,polys))+'\n\n============\n'
     if not polys:
         assert free_dim == 0
         if with_poly_history:
@@ -39,18 +44,21 @@ def solve_polynomial_equations(polys,
         assert isinstance(i,Polynomial)
         
     univariate_polys = [poly for poly in polys if poly.isUnivariate()]
-    
-    poly_history=poly_history+'\n\n'+str(map(_printPoly,univariate_polys))+'\n'
+
+    if globals.getSetting("solvePolynomialEquationsLog"):
+        poly_history=poly_history+'\n\n'+str(map(_printPoly,univariate_polys))+'\n'
     
     if univariate_polys:
         univariate_poly = univariate_polys[0]
         #    print univariate_poly
         variable_name = univariate_poly.variables()[0]
-        poly_history = poly_history + '\n\nSolving for %s\n' % variable_name
+        if globals.getSetting("solvePolynomialEquationsLog"):
+            poly_history = poly_history + '\n\nSolving for %s\n' % variable_name
 
         try:
             sol = roots_of_polynomial(univariate_poly)
-            poly_history = poly_history+'\n'+str(sol)+'\n'
+            if globals.getSetting("solvePolynomialEquationsLog"):
+                poly_history = poly_history+'\n'+str(sol)+'\n'
         except Exception as e:
             raise SolverException("Error in find_complex_roots when solving: " +
                                   str(univariate_poly) + " " + repr(e),
@@ -73,7 +81,8 @@ def solve_polynomial_equations(polys,
             univariate_poly = None
             variable_name = polys[-1].variables()[0]
             sol = [random_complex_modulos()]
-            poly_history += "In pick random solution for %s:\n %s\n\n" % (variable_name, sol)
+            if globals.getSetting("solvePolynomialEquationsLog"):
+                poly_history += "In pick random solution for %s:\n %s\n\n" % (variable_name, sol)
 
             free_dim = free_dim - 1
         
@@ -84,10 +93,10 @@ def solve_polynomial_equations(polys,
             poly.substitute(
                 {variable_name:Polynomial.constantPolynomial(value)})
             for poly in polys if not poly is univariate_poly]
-        new_solutions = solve_polynomial_equations(new_polys, free_dim,
-                                                   with_poly_history,
-                                                   poly_history,
-                                                   new_variable_dict)
+        new_solutions = solvePolynomialEquations(new_polys, free_dim,
+                                                 with_poly_history,
+                                                 poly_history,
+                                                 new_variable_dict)
         solutions = solutions + new_solutions
         
     return solutions

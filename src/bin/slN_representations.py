@@ -31,11 +31,11 @@ def load_pari(options):
     try:
         import algebra.pari as pari
         from algebra.pari import number, set_pari_precision, set_pari_allowed_error, get_pari_allowed_error, NumericalError
-        from algebra.solve_polynomial_equations import solve_polynomial_equations
+        from algebra.solve_polynomial_equations import solvePolynomialEquations
 
         global pari
         global number, set_pari_precision, set_pari_allowed_error, get_pari_allowed_error, NumericalError
-        global solve_polynomial_equations
+        global solvePolynomialEquations
     except ImportError as e:
         print "Error while loading pari"
         print "It is necessary to compile the cython code, see README"
@@ -338,10 +338,10 @@ def get_complex_volumes(t, N, c, prime_ideal, not_paranoid = False):
     all_cvols = []
 
     # Find the points in the variety
-    # solve_polynomial_equations assumes that prime_ideal is given
+    # solvePolynomialEquations assumes that prime_ideal is given
     # in Groebner basis
     sys.stderr.write("Solving...\n")
-    solutions = solve_polynomial_equations(prime_ideal)
+    solutions = solvePolynomialEquations(prime_ideal)
     sys.stderr.write("Solved...\n")
 
     # Solutions is a list with one element per Galois conjugate

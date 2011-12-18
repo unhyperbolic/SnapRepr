@@ -29,9 +29,12 @@ def parseIntOrFraction(s):
     return parseIntCoefficient(s)
 
 def defaultPrintCoefficientMethod(i):
-    sign = '+' if i >= 0 else '-'
-    printStr = str(abs(i))
-    return sign, printStr
+    try:
+        sign = '+' if i >= 0 else '-'
+        printStr = str(abs(i))
+	return sign, printStr
+    except:
+	return uncomparablePrintCoefficientMethod(i)
 
 def uncomparablePrintCoefficientMethod(i):
     printStr = str(i)
@@ -482,7 +485,7 @@ def _dictToOrderedTupleOfPairs(d):
     l.sort(key = lambda x:x[0])
     return tuple(l)
 
-
+######## OLD OBSOLETE STUFF
 
 
 
