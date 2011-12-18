@@ -31,7 +31,7 @@ def load_pari(options):
     try:
         import algebra.pari as pari
         from algebra.pari import number, set_pari_precision, set_pari_allowed_error, get_pari_allowed_error, NumericalError
-        from algebra.solve_polynomial_equations import solvePolynomialEquations
+        from algebra.solvePolynomialEquations import solvePolynomialEquations
 
         global pari
         global number, set_pari_precision, set_pari_allowed_error, get_pari_allowed_error, NumericalError

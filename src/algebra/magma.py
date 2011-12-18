@@ -151,7 +151,7 @@ def parse_primary_decomposition(s_with_backslash):
 
 if __name__=='__main__':
     import sys
-    import solve_polynomial_equations
+    import solvePolynomialEquations
     l=open(sys.argv[1],'r').read()
     g_basis=parse_magma_primary_decomposition(l)
     for i in range(len(g_basis)):
@@ -163,7 +163,7 @@ if __name__=='__main__':
             if g_basis[i][j].is_univariant():
                 print "coefficients",g_basis[i][j].coefficients()
     for a_g_basis in g_basis:
-        print solve_polynomial_equations.solve_polynomial_equations(a_g_basis)
+        print solvePolynomialEquations.solvePolynomialEquations(a_g_basis)
     
 _magma_sample = """
 Magma V2.13-6     Tue May 25 2010 18:05:46 on matthias-laptop [Seed = 531113876]

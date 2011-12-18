@@ -19,7 +19,6 @@ try:
     from manifold.triangulation import triangulation, read_triangulation_from_file
     from algebra.polynomial import polynomial
     from algebra.pari import number, set_pari_precision, get_pari_error
-    from algebra.solve_polynomial_equations import solve_polynomial_equations
     import manifold.slN
     import algebra.magma
     import algebra.pari
