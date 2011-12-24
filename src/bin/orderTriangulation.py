@@ -88,8 +88,11 @@ else:
         t.check_consistency()
         assert t.is_ordered()
 
-print "Output File:", out_file
-open(out_file,'w').write(t.to_SnapPea())
+        outFileName = outFileNameOrdered
+
+
+print "Output File:", outFileName
+open(outFileName, 'w').write(t.to_SnapPea())
     
 if not orderings:
     sys.exit(1)
