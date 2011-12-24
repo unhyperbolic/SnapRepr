@@ -541,8 +541,8 @@ def get_outfile_base(triangulation_filename):
         outfile_base = os.path.join(target_dir, filename)
     else:
         outfile_base = os.path.join(directory, filename)
-        print "You might want to create a seperate directory for the magma files with"
-        print "   mkdir", target_dir
+        #print "You might want to create a seperate directory for the magma files with"
+        #print "   mkdir", target_dir
     return outfile_base
 
 def hash_ideal(eqns, term_order):
