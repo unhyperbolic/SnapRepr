@@ -31,7 +31,10 @@ def parseIntOrFraction(s):
 def defaultPrintCoefficientMethod(i):
     try:
         sign = '+' if i >= 0 else '-'
-        printStr = str(abs(i))
+        if abs(i) is 1:
+            printStr = None
+        else:
+            printStr = str(abs(i))
 	return sign, printStr
     except:
 	return uncomparablePrintCoefficientMethod(i)
@@ -46,11 +49,15 @@ def uncomparablePrintCoefficientMethod(i):
 #######################################################
 ### Public Definitions of Monomial and Polynomial class
 
+# The coefficients of a polynomial can be any type, the 
+# policy for mixed coefficients is defined in 
+# _storageTypePolicy and _operatorTypePolicy.
+
 ### Definition of Monomial Class
 
 class Monomial(object):
 
-    # Construct a monomial with a single vairable given as string
+    # Construct a monomial with a single variable given as string
     @classmethod
     def fromVariableName(cls, var):
         assert isinstance(var, str)
@@ -67,7 +74,11 @@ class Monomial(object):
     #         a dictionary variableName -> exponent
     def __init__(self, coefficient, vars):
         """
-        >>> Monomial(2, (('a', 2), ('b', 3)))
+        >>> M = Monomial(2, (('a', 2), ('b', 3)))
+        >>> M
+        Monomial(2, (('a', 2), ('b', 3)))
+        >>> str(M)
+        '2 * a^2 * b^3'
         """
 
         self._coefficient = coefficient
@@ -76,10 +87,18 @@ class Monomial(object):
             self._vars = _dictToOrderedTupleOfPairs(vars)
         else:
             assert isinstance(vars, tuple)
+            for var, expo in vars:
+                assert isinstance(var, str)
+                assert isinstance(expo, int)
+                assert expo > 0
             self._vars = vars
 
     def __str__(self):
         return self.printMagma()
+
+    # prints the polynomial using magma conventions
+    # printCoefficientMethod is used to print the coefficients
+    # if forcePrintSign is true, it always prints with sign, e.g., "+ 3 * x"
 
     def printMagma(self, 
                    printCoefficientMethod = defaultPrintCoefficientMethod, 
@@ -144,7 +163,7 @@ class Monomial(object):
     # Check whether two monomials are equal
     def __eq__(self,other):
 
-        assert isinstance(other, monomial)
+        assert isinstance(other, Monomial)
 
         return (
             self._coefficient == other._coefficient and
@@ -164,14 +183,84 @@ class Monomial(object):
 ### Definition of Polynomial class
 
 class Polynomial(object):
-    
+
+    """
+    >>> m1 = Monomial(1, (('t', 1), ('x', 1), ('y', 1)))
+    >>> m2 = Monomial(3, (('t', 2),))
+    >>> m3 = Monomial(1, (('t', 6),))
+    >>> p1 = Polynomial( (m1, m2, m3) )
+    >>> p2 = Polynomial.parseFromMagma('3 * t * t + t ^ 6 + x * t * y')
+    >>> p3 = Polynomial.parseFromMagma('t * x * y + t^6 + 3 * t^2')
+    >>> p1 == p2
+    True
+    >>> p2 == p3
+    True
+    >>> str(p1)
+    't * x * y + 3 * t^2 + t^6'
+    >>> p4 = Polynomial.parseFromMagma('x + t^2')
+    >>> str(p4)
+    't^2 + x'
+    >>> p1 == p4
+    False
+    >>> str(p1 + p4)
+    't * x * y + 4 * t^2 + t^6 + x'
+    >>> str(p1 - p2)
+    ''
+    >>> str(p1  * p4)
+    't * x^2 * y + 3 * t^2 * x + t^3 * x * y + 3 * t^4 + t^6 * x + t^8'
+    >>> str(p4 ** 5)
+    '5 * t^2 * x^4 + 10 * t^4 * x^3 + 10 * t^6 * x^2 + 5 * t^8 * x + t^10 + x^5'
+    >>> p5 = Polynomial.parseFromMagma('x + 1')
+    >>> p6 = p5 ** 3
+    >>> str(p6)
+    '1 + 3 * x + 3 * x^2 + x^3'
+    >>> p7 = p6.substitute({'x':Polynomial.constantPolynomial(Fraction(5,3))})
+    >>> str(p7)
+    '512/27'
+    >>> p8 = Polynomial.parseFromMagma('')
+    >>> p8 == Polynomial(())
+    True
+    >>> p6.isConstant()
+    False
+    >>> p7.isConstant()
+    True
+    >>> p7.getConstant()
+    Fraction(512, 27)
+    >>> p9 = p4.substitute({'t':p5})
+    >>> str(p9)
+    '1 + 3 * x + x^2'
+    >>> p1.variables()
+    ['t', 'x', 'y']
+    >>> p1.isUnivariate()
+    False
+    >>> p9.isUnivariate()
+    True
+    >>> p1.leadingCoefficient()
+    Traceback (most recent call last):
+    ...
+    AssertionError
+    >>> p9.leadingCoefficient()
+    1
+    >>> p6 = Polynomial.parseFromMagma('1+x^2')
+
+    # >>> str(p4 % p6)
+    # '- 2 + 2 * x'
+
+    #>>> str(Polynomial.parseFromMagma('4+3*x').makeMonic())
+    #'(4/3) + x'
+    """
+
+    # construct a constant polynomial
     @classmethod
     def constantPolynomial(cls,constant):
         return Polynomial( (Monomial.constantMonomial(constant),))
 
+    # constructs a polynomial being a single variable given as string
     @classmethod
     def fromVariableName(cls,var):
         return Polynomial( (Monomial.fromVariableName(var),))
+
+    ### constructor takes a tuple of polynomials which are combined
 
     def __init__(self, monomials = ()):
 
@@ -246,25 +335,30 @@ class Polynomial(object):
     def __str__(self):
         return self.printMagma()
 
+    # print using magma printing conventions
+    # a method to print the coefficients can be supplied
+
     def printMagma(self,
                    printCoefficientMethod = defaultPrintCoefficientMethod):
         s = " ".join([monomial.printMagma(printCoefficientMethod,
                                           forcePrintSign = True)
                       for monomial in self._monomials])
-        if s[0] == '+':
+        if s and s[0] == '+':
             return s[1:].lstrip()
         return s
 
     def __repr__(self):
         return "Polynomial(%s)" % repr(self._monomials)
 
+    # convert all coefficients using conversionFunction
     def convertCoefficients(self, conversionFunction):
         return Polynomial(
             tuple([monomial.convertCoefficient(conversionFunction)
                    for monomial in self._monomials]))
 
+    # takes a dictionary variable name -> polynomial
+    # replaces a variable by the corresponding polynomial
     def substitute(self, d):
-        # dictionary variable -> Polynomial
 
         def substituteMonomial(monomial):
             vars = monomial.getVars()
@@ -282,6 +376,7 @@ class Polynomial(object):
         return sum([substituteMonomial(monomial)
                      for monomial in self._monomials], Polynomial(()))
                                     
+    # returns a list of all variables in the polynomial
     def variables(self):
         allVariables = [monomial.variables() for monomial in self._monomials]
         allVariables = sum(allVariables, [])
@@ -289,9 +384,11 @@ class Polynomial(object):
         allVariables.sort()
         return allVariables
 
+    # is the polynomial constant
     def isConstant(self):
         return not self.variables()
 
+    # returns the constant of a polynomial
     def getConstant(self):
         constants = [monomial.getCoefficient()
                      for monomial in self._monomials
@@ -302,16 +399,30 @@ class Polynomial(object):
         else:
             return 0
 
+    # true if the polynomial is in at most one variable
     def isUnivariate(self):
         return len(self.variables()) <= 1
 
+    # get leading coefficient
+    def leadingCoefficient(self):
+        assert self.isUnivariate()
+        # use that monomials are sorted by degree
+        if self._monomials:
+            return self._monomials[-1].getCoefficient()
+        else:
+            return 0
+
+    # returns the degree of the polynomial
     def degree(self):
         return max([monomial.degree() for monomial in self._monomials] + [0])
 
+    # constructs a polynomial from a magma string
+    # a function to parse the coefficients can be supplied
     @classmethod
     def parseFromMagma(cls, s, parseCoefficientFunction = parseIntOrFraction):
         return _parsePolynomialFromMagma(s, parseCoefficientFunction)
 
+    # returns the coefficient type
     def coefficientType(self):
         theType = int
         for monomial in self._monomials:
@@ -381,10 +492,15 @@ def _parseVariable(s):
 
 def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
 
+    # Stack holding the operands encountered
     operandStack = []
+    # Stack holding the operators encountered
+    # The stack includes "("
     operatorStack = []
 
-    noOperandSinceOpeningParenthesis = [True]
+    # Has there been an operand since the opening parenthesis
+    # e.g. parse things like "(+ x)"
+    noOperandSinceOpeningParenthesis = [ True ] 
 
     def debugPrint(s):
         print "=" * 75
@@ -392,13 +508,18 @@ def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
         print "Operator Stack   : ", operatorStack
         print "Operand Stack    : ", operandStack
 
+    # pop the top operator from the stack and apply it to the
+    # two top operands from the stack, repeat as long as there are precending
+    # operators left on the stack.
     def evalPrecedingOperatorsOnStack(operator = None):
         while operatorStack:
             topOperator = operatorStack[-1]
             
+            # stop if the top operator is "("
             if topOperator == '(':
                 return
             
+            # or if the top operator is not preceding
             if (_operatorPrecedence[topOperator] <
                 _operatorPrecedence[operator]):
                 return
@@ -410,9 +531,12 @@ def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
             operandStack.append(
                 _applyOperator(topOperator, l, r))
 
+    # this function is called iteratively and consumes
+    # the next operator or operand from the string
     def processNextToken(s):
         s = s.lstrip()
 
+        # parse constants or variables and push them onto the operand stack
         constant, rest = parseCoefficient(s)
         if constant:
             operandStack.append(Polynomial.constantPolynomial(constant))
@@ -424,6 +548,12 @@ def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
             operandStack.append(Polynomial.fromVariableName(variable))
             noOperandSinceOpeningParenthesis[0] = False
             return rest
+
+        # parse an operator and push it onto the stack
+        # after evaluating all preceding operators
+        #
+        # detect strings such as "(+ 3)" and push a null string
+        # onto the operand stack as to emulate parsing "(0 + 3)"
 
         nextChar, rest = s[0], s[1:]
         
@@ -439,6 +569,10 @@ def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
 
             return rest
 
+        # handle parenthesis
+        # an opening parenthesis is just popped onto the stack
+        # a closing parenthesis evaluates all operators on the stack
+        # until the corresponding opening parenthesis is encountered
         if nextChar in '()':
             parenthesis = nextChar
             if parenthesis == '(':
@@ -449,18 +583,29 @@ def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
                 assert operatorStack.pop() == '('
             return rest
 
+        # This place should not be reached when a well-formed polynomial is supplied
         raise Exception, "While parsing polynomial %s" % s
 
+    # iterate through the string to parse
     s = s.strip()
     while s:
         # debugPrint(s)
         s = processNextToken(s)
 
+    # finish any remaining operators on the stack
     # debugPrint(s)        
     evalPrecedingOperatorsOnStack(None)
     # debugPrint(s)
 
+    # check that the operator stack is empty
+    # the operand stack should only contain the result or maybe
+    # an additional empty polynomial
+
     assert not operatorStack
+
+    if not operandStack:
+        return Polynomial(())
+
     assert (len(operandStack) == 1
             or (
                 len(operandStack) == 2 and
@@ -470,7 +615,21 @@ def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
 
 ### Other helper functions
 
+# given a list of dictionaries, combine values of the different
+# dictionaries having the same key using combineFunction.
+
 def _combineDicts(listOfDicts, combineFunction):
+    """
+    >>> d = _combineDicts(
+    ...      [ {'key1': 1, 'key2': 2},
+    ...        {'key1': 1} ],
+    ...      combineFunction = operator.add)
+    >>> d['key1']
+    2
+    >>> d['key2']
+    2
+    """
+
     result = {}
     for aDict in listOfDicts:
         for k, v in aDict.items():
@@ -480,380 +639,23 @@ def _combineDicts(listOfDicts, combineFunction):
                 result[k] = v
     return result
 
+# take a dictionary and turn it into a tuple of pairs sorted by keys
+
 def _dictToOrderedTupleOfPairs(d):
+    """
+    >>> _dictToOrderedTupleOfPairs(
+    ...      { 'key3':'value3', 'key1':'value1', 'key2':'value2' })
+    (('key1', 'value1'), ('key2', 'value2'), ('key3', 'value3'))
+    """
+
     l = d.items()
     l.sort(key = lambda x:x[0])
     return tuple(l)
 
+
 ######## OLD OBSOLETE STUFF
 
-
-
-class OldPolynomial(object): ### allows multiplication with integers
-    def __init__(self,terms=[]):
-        """
-        >>> p1 = Polynomial('3 * t * t + t ^ 6 + x * t * y')
-        >>> p2 = Polynomial('t * x * y + 3 * t^2 + t^6')
-        >>> p1 == p2
-        True
-        >>> str(p1 + p2)
-        '2 * t * x * y + 6 * t^2 + 2 * t^6'
-        >>> str(p1 - p2)
-        ''
-        >>> str(p1  * p2)
-        't^2 * x^2 * y^2 + 6 * t^3 * x * y + 9 * t^4 + 2 * t^7 * x * y + 6 * t^8 + t^12'
-        >>> p1 == p1 ** 2
-        False
-        >>> p3 = Polynomial('x+1')
-        >>> p4 = p3 ** 3
-        >>> str(p4)
-        '1  + 3 * x + 3 * x^2 + x^3'
-        >>> p5 = p4.substitute_numerical({'x':4.5})
-        >>> str(p5)
-        '166.375'
-        >>> p5.is_constant()
-        True
-        >>> p5.get_constant()
-        166.375
-        >>> str(p4.substitute({'x':p4}))
-        '8 + 36 * x + 90 * x^2 + 147 * x^3 + 171 * x^4 + 144 * x^5 + 87 * x^6 + 36 * x^7 + 9 * x^8 + x^9'
-        >>> p1.variables()
-        ['t', 'x', 'y']
-        >>> p1.is_univariate()
-        False
-        >>> p4.is_univariate()
-        True
-        >>> p1.leading_coefficient()
-        Traceback (most recent call last):
-        ...
-        AssertionError
-        >>> p4.leading_coefficient()
-        1
-        >>> p6 = Polynomial('1+x^2')
-        >>> str(p4 % p6)
-        '- 2 + 2 * x'
-        >>> str(Polynomial('4+3*x').make_monic())
-        '(4/3) + x'
-        >>> str(p5 + 2 * p3 + p2 * 3)
-        '168.375 + 3 * t * x * y + 9 * t^2 + 3 * t^6 + 2 * x'
-        """
-
-        if isinstance(terms, Fraction):
-            self.terms=[(terms,)]
-        if isinstance(terms,int):
-            self.terms=[(terms,)]        
-        if isinstance(terms,Polynomial):
-            self.terms=terms.terms
-        if isinstance(terms,str):
-            # does the expression have any +, * or ^ sign
-            def eval_str(s):
-                found_plus_minus=None
-                found_times=None
-                found_power=None
-                s=s.strip()
-                if not s:
-                    return Polynomial()
-                opening_parenthesis=0
-                for i in range(len(s)):
-                    if s[i]=='(':
-                        opening_parenthesis+=1
-                    if s[i]==')':
-                        opening_parenthesis-=1
-                    if not opening_parenthesis:
-                        if s[i] in ['+','-']:
-
-                            found_plus_minus=i
-                        if s[i]=='*':
-                            found_times=i
-                        if s[i]=='^':
-                            found_power=i
-                if not found_plus_minus==None:
-                    if s[found_plus_minus]=='+':
-                        return eval_str(s[:found_plus_minus])+eval_str(s[found_plus_minus+1:])
-                    if s[found_plus_minus]=='-':
-                        return eval_str(s[:found_plus_minus])-eval_str(s[found_plus_minus+1:])
-                if not found_times==None:
-                    l1=eval_str(s[:found_times])
-                    l2=eval_str(s[found_times+1:])
-                    return l1*l2
-                if not found_power==None:
-                    return eval_str(s[:found_power])**int(s[found_power+1:])
-                if s[0]=='(':
-                    assert s[-1]==')'
-                    return eval_str(s[1:-1])
-                if s in ['i','I']:
-                    return Polynomial([(1j,)])
-                if re.match(r'[_A-Za-z][_A-Za-z0-9]*$',s):
-                    return Polynomial([(1,(s,1))])
-                if re.match(r'[0-9]+$',s):
-                    return Polynomial([(int(s),)])
-                if re.match(r'[0-9]+/[0-9]+$',s):
-                    return Polynomial([(Fraction(s),)])
-                r=re.match(r'([0-9]+\.[0-9]+)(j?)$',s)
-                if r:
-                    if r.group(2):
-                        return Polynomial([(complex(0,float(r.group(1))),)])
-                    else:
-                        return Polynomial([(float(r.group(1)),)])
-                    
-                raise Exception, "while parsing Polynomial %s" % s
-
-            self.terms=eval_str(terms).terms
-        if isinstance(terms,list):
-            self.terms=terms
-            
-        assert isinstance(self.terms,list)
-        for term in self.terms:
-            assert isinstance(term,tuple)
-            for j in term[1:]:
-                assert isinstance(j,tuple)
-                assert isinstance(j[0],str)
-                assert isinstance(j[1],int)
-                assert j[1]>=0
-
-    @classmethod
-    def type_name(cls):
-        return "Polynomial"
-
-    def constructor_argument(self):
-        return str(self)
-
-    def __eq__(self,other):
-        if isinstance(other,type(None)):
-            return False
-        if isinstance(other,Polynomial):
-            return self.terms==other.terms
-        if not self.is_constant():
-            return False
-        return self.get_constant()==other
-        
-
-    def __add__(self,other):
-        if not isinstance(other, Polynomial):
-            other = Polynomial(other)
-        return Polynomial(self.terms+other.terms).simplify()
-
-    def __radd__(self,other):
-        return self + other
-
-    def __pow__(self,other):
-        if other==0:
-            return Polynomial([(1,)])
-        if other % 2:
-            return self * self ** (other - 1)
-        return (self*self) ** (other/2)
-        
-    def __mul__(self, other):
-        if not isinstance(other, Polynomial):
-            return self * Polynomial(other)
-        
-        assert isinstance(other, Polynomial)
-        new_terms=[]
-        for i in self.terms:
-            for j in other.terms:
-                new_terms.append((i[0]*j[0],)+i[1:]+j[1:])
-        return Polynomial(new_terms).simplify()
-
-    def __rmul__(self, other):
-        return self * Polynomial(other)
-
-    def __sub__(self,other):
-        return self+other*Polynomial([(-1,)])
-
-    def __repr__(self):
-        return "Polynomial("+repr(self.terms)+")"
-
-    def __str__(self):
-        res=""
-        for term in self.terms:
-            def to_power(pair):
-                if pair[1]==1:
-                    return pair[0]
-                else:
-                    return pair[0]+"^"+str(pair[1])
-            coeff=[]
-            if term[0] in [+1,-1]:
-                if term[0]==+1:
-                    res = res + ' + '
-                else:
-                    res = res + ' - '
-            else:
-                if (isinstance(term[0],int) or
-                    isinstance(term[0],long) or
-                    isinstance(term[0],float) or
-                    isinstance(term[0],Fraction)) and term[0]<0:
-                    res = res + ' - '
-                    coeff = [str(abs(term[0]))]
-                elif isinstance(term[0],Polynomial):
-                    res = res + ' + '
-                    coeff = ['( ' + str(term[0]) + ' )']
-                else:
-                    res = res + ' + '
-                    coeff = ['('+str(term[0])+')']
-                    
-            res = res + ' * '.join(coeff+map(to_power,term[1:]))
-            if not (coeff or term[1:]):
-                res = res + ' 1 '
-        res=res.strip()
-        if res and res[0]=='+':
-            return res[1:].strip()
-        return res
-
-    def simplify(self):
-        new_terms={}
-        for term in self.terms:
-            coeff=term[0]
-            vars=term[1:]
-            new_vars={}
-            for var in vars:
-                if new_vars.has_key(var[0]):
-                    new_vars[var[0]]=new_vars[var[0]]+var[1]
-                else:
-                    new_vars[var[0]]=var[1]
-            all_vars=new_vars.keys()
-            all_vars.sort()
-            new_vars=tuple(
-                [(var,new_vars[var]) for var in all_vars if new_vars[var]])
-            if new_terms.has_key(new_vars):
-                new_terms[new_vars]=new_terms[new_vars]+coeff
-            else:
-                new_terms[new_vars]=coeff
-        all_terms=new_terms.keys()
-        all_terms.sort()
-        return Polynomial([(new_terms[vars],)+vars for vars in all_terms if not new_terms[vars]==0])
-    
-    def substitute_numerical(self,var,value=None):
-        if isinstance(var,dict):
-            p=Polynomial(self)
-            for var,value in var.items():
-                p=p.substitute_numerical(var,value)
-            return p
-            
-        def handle_vars(v,var=var,value=value):
-            coeff=v[0]
-            for the_var,the_exp in v[1:]:
-                if the_var==var:
-                    coeff = coeff*value**the_exp
-            return (coeff,)+tuple([x for x in v[1:] if not x[0]==var])
-        return Polynomial(map(handle_vars,self.terms)).simplify()
-
-    def substitute(self,var1,var2=None):
-        """
-        Substitute can take two arguments or a dictionary
-        It can substitute a variable by another variable or a Polynomial.
-
-        >>> p = Polynomial("x^3+y^3")
-
-        Subsitute x by y
-        >>> str(p.substitute("x","y"))
-        '2 * y^3'
-        >>> str(p.substitute({"x":"y"}))
-        '2 * y^3'
-        >>> str(p.substitute("x",Polynomial("y")))
-        '2 * y^3'
-        >>> str(p.substitute({"x":Polynomial("y")}))
-        '2 * y^3'
-
-        Subsitute x by a+1 and y by b+1
-        >>> str(p.substitute({"x":Polynomial("a+1"),
-        ...                  "y":Polynomial("b+1")}))
-        '2 + 3 * a + 3 * a^2 + a^3 + 3 * b + 3 * b^2 + b^3'
-        """
-        
-        if isinstance(var1,dict):
-            assert var2==None
-            d=var1
-        else:
-            d={var1:var2}
-
-        def new_poly(term,d=d):
-            new_term=[term[0]]
-            poly=Polynomial([(1,)])
-            for var,exp in term[1:]:
-                if d.has_key(var):
-                    if isinstance(d[var],str):
-                        new_term.append((d[var],exp))
-                    elif isinstance(d[var],Polynomial):
-                        poly=poly*(d[var]**exp)
-                    else:
-                        raise Exception, 'substitute: must be variable or Polynomial'
-                else:
-                    new_term.append((var,exp))
-            if poly==Polynomial([(1,)]):
-                return [tuple(new_term)]
-            else:
-                return (Polynomial([tuple(new_term)])*poly).terms
-            
-        res=[]
-        for term in self.terms:
-            res=res+new_poly(term)
-        return Polynomial(res).simplify()
-        raise TypeError, " in Polynomial substitute"
-            
-    def variables(self):
-        vars=[]
-        for term in self.terms:
-            for var,exp in term[1:]:
-                vars.append(var)
-        vars=list(set(vars))
-        vars.sort()
-        return vars
-
-    def is_linear(self):
-        return self.degree()==1
-
-    def get_linear_and_constant_term(self):
-        assert self.is_linear()
-        assert self.is_univariate()
-        return (self.terms[1][0],self.terms[0][0])
-        
-    def is_univariate(self):
-        return len(self.variables())==1
-
-    def is_constant(self):
-        return len(self.variables())==0
-
-    def get_constant(self):
-        assert self.is_constant()
-        assert len(self.terms)<=1
-        if self.terms:
-            return self.terms[0][0]
-        else:
-            return 0
-
-    def degree(self,variable=None):
-        max=0
-        for term in self.terms:
-            deg=0
-            for var,exp in term[1:]:
-                if (not variable) or var==variable:
-                    deg=deg+exp            
-            if deg>max:
-                max=deg
-        return max
-
-    def leading_coefficient(self):
-        assert self.is_univariate()
-        lead_coeff=None
-        highest_deg=-1
-        for term in self.terms:
-            this_deg=0
-            if len(term)==2:
-                this_deg=term[1][1]
-            if this_deg>highest_deg:
-                highest_deg=this_deg
-                lead_coeff=term[0]
-        return lead_coeff
-    
-    def coefficients(self):
-        assert self.is_univariate()
-        coeffs=[0 for i in range(self.degree()+1)]
-        for term in self.terms:
-            if len(term)==1:
-                coeffs[0]=term[0]
-            else:
-                coeffs[term[1][1]]=term[0]
-        return coeffs
+class OldPolynomial:
 
     def __mod__(self,other):
         assert isinstance(other,Polynomial)
