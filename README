@@ -25,7 +25,7 @@ COMPUTING REPRESENTATIONS
 
 1. Export triangulation files from the snappy census.
 
-Program: exportTrigsFromSnappyCensus.py
+Program: SnapReprExportTrigsFromSnappyCensus.py
 Usage:
  * use in the triangulation directory (uses directory structure)
  * run program without arguments to see usage
@@ -54,13 +54,13 @@ Directory conventions:
 
 2. Ordering triangulations
 
-Program: orderTriangulation.py
+Program: SnapReprOrderTriangulation.py
 Usage: 
- * Basic: orderTriangulation.py IN_TRIANGULATION_FILE
+ * Basic: SnapReprOrderTriangulation.py IN_TRIANGULATION_FILE
  * Apply to all triangulations:
    for i in *.trig; do
        if ! echo $i | grep order >/dev/null; then
-           orderTriangulation.py $i; 
+           SnapReprOrderTriangulation.py $i; 
        fi;
    done
 
@@ -72,9 +72,9 @@ File naming conventions:
 
 3. Create input files for magma
 
-Program: slN_representation.py
-Usage:   slN_representation.py TRIANGULATION_FILE.trig
-	 slN_representation.py -N 3 TRIANGULATION_FILE.trig
+Program: SnapReprMagmaPipeline.py
+Usage:   SnapReprMagmaPipeline.py TRIANGULATION_FILE.trig
+	 SnapReprMagmaPipeline.py -N 3 TRIANGULATION_FILE.trig
 
          where
 	  * TRIANGULATION_FILE.trig is a SnapPea triangulation
@@ -92,8 +92,8 @@ File Naming Conventions:
 
 4. Run magma
 
-Program: mamga_out is a wrapper around magma
-Usage:   magma_out MAGMA_INPUT_FILE.magma
+Program: SnapReprMagmaWrapper is a wrapper around magma
+Usage:   SnapReprMagmaWrapper MAGMA_INPUT_FILE.magma
 
 File Naming Conventions:
 
@@ -103,17 +103,17 @@ cusped_NO/NAME_ORDERSTATE_slN_cK.magma_out
 
 5. Solve the Groebner basis returned by magma and return complex volume
 
-Program: slN_representation.py
+Program: SnapReprMagmaPipeline
 
 5A. Making a CSV file for a single triangulation, SL(N,C) and cohomology
     obstruction class:
 
-     slN_representation.py MAGMA_OUTPUT_FILE.magma_out > CSV_FILE_PER_TRIG
-     slN_representation.py -p 50 MAGMA_OUTPUT_FILE.magma_out > CSV_FILE
+     SnapReprMagmaPipeline.py MAGMA_OUTPUT_FILE.magma_out
+     SnapReprMagmaPipeline -p 50 MAGMA_OUTPUT_FILE.magma_out
 
 5B. Printing the header for the CSV file:
      cd triangulations
-     slN_representation.py -H > header.csv
+     SnapReprMagmaPipeline -H > header.csv
 
 5C. Collecting the results in a single CSV file:
     
@@ -122,7 +122,7 @@ Program: slN_representation.py
 
 Naming conventions:
 
-cusped_NO/NAME_ORDERSTATE_slN_cK.csv
+cusped_NO/NAME_ORDERSTATE_slN_cK_magma.csv
 
 Options:
   * -p specifies precision

@@ -18,6 +18,7 @@ try:
     import manifold.slN
     import algebra.polynomial
     import algebra.magma
+    import globalsettings
 except ImportError as e:
     print e
     print
@@ -26,7 +27,9 @@ except ImportError as e:
     print "Base path is                     :", base_path
     sys.exit(1)
 
+globalsettings.setSetting("testpath", base_path + "tests/")
+
 doctest.testmod(manifold.triangulation)
-doctest.testmod(manifold.slN)
+#doctest.testmod(manifold.slN)
 doctest.testmod(algebra.polynomial)
-doctest.testmod(algebra.magma)
+#doctest.testmod(algebra.magma)
