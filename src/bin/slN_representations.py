@@ -129,6 +129,9 @@ def main():
     else:
 
         sys.stderr.write("Could not recognize a SnapPea triangulation file or a MAGMA output file ????\n\n")
+        
+        # XXX:needs to be fixed!
+
         print '"-","%s","-","-","-","-","-","-","-","-","-","-","-","FILE NOT RECOGNIZED","-","-","-"' % args[0]
 
 def write_magma_files(options, triangulation_filename):
