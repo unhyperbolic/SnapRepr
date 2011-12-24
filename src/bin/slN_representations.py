@@ -216,6 +216,17 @@ def write_magma_files(options, triangulation_filename):
 def process_magma_output_headers(options, magma_out, magma_filename):
     error_condition = ""
     output = StringIO.StringIO()
+
+    csvOutputFilenameBase = magma_filename
+
+    sys.stderr.write("Output File: %s\n" % csvOutputFilenameBase)
+
+    if magma_filename[-6:] == '.magma':
+        csvOutputFilenameBase = magma_filename[:-6]
+    if magma_filename[-10:] == '.magma_out':
+        csvOutputFilenameBase = magma_filename[:-10]
+    csvOutputFileName = csvOutputFilenameBase + '.csv'
+
     csv_writer = csv.DictWriter(output, 
                                 fieldnames = CSVHeader,
                                 restval = "")
@@ -317,21 +328,21 @@ def process_magma_output_headers(options, magma_out, magma_filename):
                             rvol = 0
                         csv_dict["Volume"] = str(rvol)
                         csv_dict["CS"] = str(cvol.imag())
-#                        csv_writer.writerow(csv_dict)
 
                 except NumericalError as n:
                     csv_dict["Warning"] = "Numerical Error"
-#                    csv_writer.writerow(csv_dict)
                     sys.stderr.write(traceback.format_exc())
                     sys.stderr.write("\n\n\n")
                 except:
                     csv_dict["Warning"] = "UNKNOWN ERROR"
-#                    csv_writer.writerow(csv_dict)
                     sys.stderr.write(traceback.format_exc())
                     sys.stderr.write("\n\n\n")
             csv_writer.writerow(csv_dict)
 
-    print output.getvalue()[:-1]
+    resultString = output.getvalue()
+    print resultString[:-1]
+    open(csvOutputFileName, 'w').write(resultString)
+    
 
 def get_complex_volumes(t, N, c, prime_ideal, not_paranoid = False):
 
