@@ -1,3 +1,7 @@
+Name all programs: SnapReprOrderTriangulation...
+SnapReprMagmaPipeline
+
+
 ===============================================================================
 INSTALLATION
 ===============================================================================
@@ -9,8 +13,8 @@ python setup.py install
 
 2. Add the src/bin directory to the $PATH environment variable
 
-For example, if the directory is /home/foo/SnapRepr/src/bin, then add the following lines
-to ~/.profile:
+For example, if the directory is /home/foo/SnapRepr/src/bin, then add the
+following lines to ~/.profile:
 
 PATH="/home/foo/SnapRepr/src/bin:$PATH"
 
