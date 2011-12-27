@@ -17,8 +17,8 @@ sys.path.append(base_path)
 
 try:
     from manifold.triangulation import triangulation, read_triangulation_from_file
-    from algebra.polynomial import polynomial
     from algebra.pari import number, set_pari_precision, get_pari_error
+    from algebra.polynomial import Polynomial
     import manifold.slN
     import algebra.magma
     import algebra.pari
@@ -94,7 +94,7 @@ def process_file(trig_file):
 
     if f:
         fp = f.group(1)
-        fdeg = str(polynomial(fp).degree())
+        fdeg = str(Polynomial.parseFromMagma(fp).degree())
 
     
     if re.search(r"\(-?\d+,-?\d+\)", trig_file):
@@ -116,7 +116,7 @@ if not len(sys.argv) == 2:
     sys.exit(1)
 
 if sys.argv[1] == '-H':
-    print 'Name, Type, Tetrahedra, Volume, CS, "Invariant Trace Field", Degree'
+    print 'Name,Type,Tetrahedra,Volume,CS,"Invariant Trace Field",Degree'
 else:
     k = process_file(sys.argv[1])
     if k:
