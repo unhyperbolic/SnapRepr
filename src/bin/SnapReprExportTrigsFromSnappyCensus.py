@@ -2,15 +2,28 @@
 
 import optparse
 import sys
+import os
 
 import snappy
 
-def create_cusped_directory_name(trig):
+maxNumTetsSeparateDirs = 30
+
+def cusped_directory_name(trig):
     num_tets = trig.num_tetrahedra()
-    if num_tets >= 30:
-        return "cusped_30_higher/"
+    if num_tets >= maxNumTetsSeparateDirs:
+        return "cusped_%d_higher" % maxNumTetsSeparateDirs
     else:
-        return "cusped_%d/" % num_tets
+        return "cusped_%d" % num_tets
+
+def createCuspedDirectory(trig):
+    name = cusped_directory_name(trig)
+
+    if os.path.exists(name):
+        assert os.path.isdir(name)
+    else:
+        os.mkdir(name)
+
+    return name
 
 def filename_generic(trig):
     return trig.name()
@@ -36,9 +49,10 @@ def write_files_for_sequence_of_trigs(trigs,
         print n_trig.name()
         if n_trig.num_tetrahedra() <= max_tets:
             filename = (
-                create_cusped_directory_name(trig) + 
+                createCuspedDirectory(trig) + 
+                '/' +
                 filename_function(trig) + 
-            ".trig")
+                ".trig")
             print filename
 
             print "saved"

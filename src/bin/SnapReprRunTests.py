@@ -27,9 +27,13 @@ except ImportError as e:
     print "Base path is                     :", base_path
     sys.exit(1)
 
-globalsettings.setSetting("testpath", base_path + "tests/")
+testPath = base_path + "/tests"
+testTriangulationsPath = testPath + "/triangulations"
+
+globalsettings.setSetting("testPath", testPath)
+globalsettings.setSetting("testTriangulationsPath", testTriangulationsPath)
 
 doctest.testmod(manifold.triangulation)
-#doctest.testmod(manifold.slN)
+doctest.testmod(manifold.slN)
 doctest.testmod(algebra.polynomial)
-#doctest.testmod(algebra.magma)
+doctest.testmod(algebra.magma)

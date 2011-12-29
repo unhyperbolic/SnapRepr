@@ -228,7 +228,7 @@ def process_magma_output_headers(options, magma_out, magma_filename):
         csvOutputFilenameBase = magma_filename[:-6]
     if magma_filename[-10:] == '.magma_out':
         csvOutputFilenameBase = magma_filename[:-10]
-    csvOutputFileName = csvOutputFilenameBase + '.csv'
+    csvOutputFileName = csvOutputFilenameBase + '_magma.csv'
 
     csv_writer = csv.DictWriter(output, 
                                 fieldnames = CSVHeader,
@@ -331,16 +331,22 @@ def process_magma_output_headers(options, magma_out, magma_filename):
                             rvol = 0
                         csv_dict["Volume"] = str(rvol)
                         csv_dict["CS"] = str(cvol.imag())
+                        csv_writer.writerow(csv_dict)
 
                 except NumericalError as n:
                     csv_dict["Warning"] = "Numerical Error"
+                    csv_dict["Volume"] = "-"
+                    csv_dict["CS"] = "-"
+                    csv_writer.writerow(csv_dict)
                     sys.stderr.write(traceback.format_exc())
                     sys.stderr.write("\n\n\n")
                 except:
                     csv_dict["Warning"] = "UNKNOWN ERROR"
+                    csv_dict["Volume"] = "-"
+                    csv_dict["CS"] = "-"
+                    csv_writer.writerow(csv_dict)
                     sys.stderr.write(traceback.format_exc())
                     sys.stderr.write("\n\n\n")
-            csv_writer.writerow(csv_dict)
 
     resultString = output.getvalue()
     print resultString[:-1]

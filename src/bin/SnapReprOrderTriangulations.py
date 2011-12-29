@@ -47,7 +47,7 @@ else:
 t = triangulation(open(inputFileName,'r').read())
 t.orient()
 
-if t.is_ordered():
+if t.is_ordered() and t.allTetsPositiveOrientation():
     # triangulation is already ordered
 
     print "Triangulation already ordered"
@@ -58,6 +58,8 @@ else:
     
     # try to find a canonical ordering
  
+    t.reorder_orient()
+
     orderings = t.find_orderings()
     print "Number of orderings of the triangulation:", len(orderings)
 

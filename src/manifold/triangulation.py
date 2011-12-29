@@ -1,4 +1,6 @@
 import copy
+import operator
+import globalsettings
 
 def left_out_number(l):
     """
@@ -127,7 +129,8 @@ class tetrahedron:
 
 def read_triangulation_from_file(filename):
     """
-    >>> t=read_triangulation_from_file("lib/triangulations/m003.trig")
+    >>> dir = globalsettings.getSetting("testTriangulationsPath")
+    >>> t=read_triangulation_from_file(dir + "/m003.trig")
     >>> len(t)
     2
     >>> t.num_or_cusps
@@ -175,23 +178,36 @@ def read_triangulation_from_file(filename):
 class triangulation:
     def reorder_orient(self):
         self.orient()
-        perms=[permutation() if t.positive_orientation else permutation([0,1,3,2]) for t in self.tet_list]
+        perms = [
+            permutation() if t.positive_orientation else permutation([0,1,3,2])
+            for t in self.tet_list]
         self.reorder_tets(perms)
     
-    def orient(self):        
-        oriented_tets=[set([])]
+    def orient(self):
+
+        oriented_tets = [set([])]
+
         def orient_tet(tet,
                        positive_orientation=True,
-                       tets=self.tet_list,
-                       oriented_tets=oriented_tets):
+                       tets = self.tet_list,
+                       oriented_tets = oriented_tets):
+
             if not tet.index in oriented_tets[0]:
-                tet.positive_orientation=positive_orientation
+                tet.positive_orientation = positive_orientation
                 oriented_tets[0] = oriented_tets[0] | set([tet.index])
                 for face_index in range(4):
                     orient_tet(tets[tet.neighbor_index[face_index]],
                                bool(positive_orientation ^ tet.gluing[face_index].is_even()))
+
         orient_tet(self.tet_list[0])
     
+    def allTetsPositiveOrientation(self):
+        self.orient()
+        return reduce(
+            operator.and_,
+            [tet.positive_orientation for tet in self.tet_list],
+            True)
+        
     def cusp_structure(self):
         self.num_or_cusps=0
         self.num_nonor_cusps=0
@@ -474,7 +490,8 @@ class triangulation:
 
     def find_orderings(self):
         """
-        >>> t=read_triangulation_from_file("lib/triangulations/m053.trig")
+        >>> dir = globalsettings.getSetting("testTriangulationsPath")
+        >>> t=read_triangulation_from_file(dir + "/m053.trig")
         >>> len(t.find_orderings())
         4
         >>> t.is_edge_order_orientation_preserving(t.find_orderings()[0])

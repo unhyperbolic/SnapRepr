@@ -18,8 +18,9 @@ def ideal_to_magma(polys, term_order):
     Turns a list of polynomials which are considered to be generators of an
     ideal into a format suitable for MAGMA.
 
-    >>> polys = [polynomial("x*y"), polynomial("x*z")]
-    >>> print ideal_to_magma(polys)
+    >>> polys = [ Polynomial.parseFromMagma("x*y"), 
+    ...           Polynomial.parseFromMagma("x*z") ]
+    >>> print ideal_to_magma(polys, ["x", "y", "z"])
     P<x, y, z> :=   PolynomialRing(RationalField(), 3);
     I := ideal<P |
           x * y,
@@ -40,20 +41,22 @@ def primary_decomposition(polys, term_order):
     Decomposition
 
 
-    >>> polys = [polynomial("x*y"), polynomial("x*z")]
-    >>> print primary_decomposition(polys)
+    >>> polys = [ Polynomial.parseFromMagma("x*y"), 
+    ...           Polynomial.parseFromMagma("x*z") ]
+    >>> print primary_decomposition(polys, ["x", "y", "z"])
     P<x, y, z> :=   PolynomialRing(RationalField(), 3);
     I := ideal<P |
           x * y,
           x * z>;
     <BLANKLINE>
     <BLANKLINE>
+    cputime := Cputime();
     print "PRIMARY=DECOMPOSITION=BEGINS=HERE";
     PrimaryDecomposition(I);
     print "PRIMARY=DECOMPOSITION=ENDS=HERE";
     <BLANKLINE>
     <BLANKLINE>
-    <BLANKLINE>
+    print "CPUTIME          :", Cputime(cputime);
     """
     
     return (  ideal_to_magma(polys, term_order) + "\n\n"
@@ -102,11 +105,11 @@ def parse_primary_decomposition(s_with_backslash):
     >>> len(p)
     3
     >>> str(p[0])
-    '-  1  + c_01_0'
+    '- 1 + c_01_0'
     >>> str(p[1])
-    '1  + c_02_0 + t'
+    '1 + c_02_0 + t'
     >>> str(p[2])
-    '1  + t + t^2'
+    '1 + t + t^2'
     """
 
     s = re.search(

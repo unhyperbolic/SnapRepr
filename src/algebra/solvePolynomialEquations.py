@@ -5,9 +5,9 @@ from algebra.pari import roots_of_polynomial
 from algebra.pari import random_complex_modulos
 from algebra.pari import number
 
-import globals
+import globalsettings
 
-globals.registerSetting("solvePolynomialEquationsLog", True)
+globalsettings.registerSetting("solvePolynomialEquationsLog", True)
 
 class SolverException(Exception):
     def __init__(self, message, poly_hist):
@@ -31,7 +31,7 @@ def solvePolynomialEquations(polys,
     
     polys = [polynomial.convertCoefficients(number) for polynomial in polys]
 
-    if globals.getSetting("solvePolynomialEquationsLog"):
+    if globalsettings.getSetting("solvePolynomialEquationsLog"):
         poly_history += '\n\n\n\n'+'\n'.join(map(_printPoly,polys))+'\n\n============\n'
     if not polys:
         assert free_dim == 0
@@ -45,19 +45,19 @@ def solvePolynomialEquations(polys,
         
     univariate_polys = [poly for poly in polys if poly.isUnivariate()]
 
-    if globals.getSetting("solvePolynomialEquationsLog"):
+    if globalsettings.getSetting("solvePolynomialEquationsLog"):
         poly_history=poly_history+'\n\n'+str(map(_printPoly,univariate_polys))+'\n'
     
     if univariate_polys:
         univariate_poly = univariate_polys[0]
         #    print univariate_poly
         variable_name = univariate_poly.variables()[0]
-        if globals.getSetting("solvePolynomialEquationsLog"):
+        if globalsettings.getSetting("solvePolynomialEquationsLog"):
             poly_history = poly_history + '\n\nSolving for %s\n' % variable_name
 
         try:
             sol = roots_of_polynomial(univariate_poly)
-            if globals.getSetting("solvePolynomialEquationsLog"):
+            if globalsettings.getSetting("solvePolynomialEquationsLog"):
                 poly_history = poly_history+'\n'+str(sol)+'\n'
         except Exception as e:
             raise SolverException("Error in find_complex_roots when solving: " +
@@ -81,7 +81,7 @@ def solvePolynomialEquations(polys,
             univariate_poly = None
             variable_name = polys[-1].variables()[0]
             sol = [random_complex_modulos()]
-            if globals.getSetting("solvePolynomialEquationsLog"):
+            if globalsettings.getSetting("solvePolynomialEquationsLog"):
                 poly_history += "In pick random solution for %s:\n %s\n\n" % (variable_name, sol)
 
             free_dim = free_dim - 1
