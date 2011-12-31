@@ -19,6 +19,8 @@ try:
     import algebra.polynomial
     import algebra.magma
     import globalsettings
+    import utilities.basicAlgorithms
+    import algebra.mpmathFunctions
 except ImportError as e:
     print e
     print
@@ -37,3 +39,5 @@ doctest.testmod(manifold.triangulation)
 doctest.testmod(manifold.slN)
 doctest.testmod(algebra.polynomial)
 doctest.testmod(algebra.magma)
+doctest.testmod(utilities.basicAlgorithms)
+doctest.testmod(algebra.mpmathFunctions)

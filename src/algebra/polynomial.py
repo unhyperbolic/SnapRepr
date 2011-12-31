@@ -2,6 +2,7 @@ import re
 import operator
 from fractions import Fraction
 
+from utilities import basicAlgorithms
 
 ###############################################################
 ### Default functions for parsing and printing the coefficients
@@ -84,7 +85,7 @@ class Monomial(object):
         self._coefficient = coefficient
 
         if isinstance(vars, dict):
-            self._vars = _dictToOrderedTupleOfPairs(vars)
+            self._vars = basicAlgorithms.dictToOrderedTupleOfPairs(vars)
         else:
             assert isinstance(vars, tuple)
             for var, expo in vars:
@@ -151,8 +152,9 @@ class Monomial(object):
             self._coefficient, other._coefficient, operator.mul)
 
         # Compute the variables
-        varDict = _combineDicts([dict(self._vars),dict(other._vars)],
-                                operator.add)
+        varDict = basicAlgorithms.combineDicts(
+            [dict(self._vars),dict(other._vars)],
+            operator.add)
 
         return Monomial(coefficient, varDict)
 
@@ -278,13 +280,14 @@ class Polynomial(object):
             for monomial in monomials]
 
         # combine the dictionaries using sum
-        combinedVarsCoeffDict = _combineDicts(listOfVarsCoeffDicts,
-                                              _operatorTypePolicy)
+        combinedVarsCoeffDict = basicAlgorithms.combineDicts(
+            listOfVarsCoeffDicts,
+            _operatorTypePolicy)
 
         # turn dictionary into a list of pairs (vars, coefficient)
         # in canonical order
-        orderedTupleOfVarsCoeffPairs = _dictToOrderedTupleOfPairs(
-            combinedVarsCoeffDict)
+        orderedTupleOfVarsCoeffPairs = (
+            basicAlgorithms.dictToOrderedTupleOfPairs(combinedVarsCoeffDict))
 
         # turn pairs into monomials, skip trivial monomials
         combinedMonomials = [
@@ -412,6 +415,16 @@ class Polynomial(object):
         else:
             return 0
 
+    # get coefficients in descending order of a univariate polynomial
+    def getCoefficients(self, conversionFunction = lambda x:x):
+        assert self.isUnivariate()
+        degree = self.degree()
+        listOfCoefficients = (degree + 1) * [ conversionFunction(0) ]
+        for monomial in self._monomials:
+            listOfCoefficients[degree - monomial.degree()] = (
+                conversionFunction(monomial.getCoefficient()))
+        return listOfCoefficients
+
     # returns the degree of the polynomial
     def degree(self):
         return max([monomial.degree() for monomial in self._monomials] + [0])
@@ -423,10 +436,9 @@ class Polynomial(object):
         return _parsePolynomialFromMagma(s, parseCoefficientFunction)
 
     # returns the coefficient type
-    def coefficientType(self):
-        theType = int
+    def coefficientType(self, theType = int):
         for monomial in self._monomials:
-            theType = _storageTypePolicy(theType, type(monomial))
+            theType = _storageTypePolicy(theType, monomial.coefficientType())
         return theType
 
 
@@ -456,6 +468,9 @@ def _operatorTypePolicy(objA, objB, op = operator.add):
         return op(type(objB)(objA), objB)
     if type(objB) == int:
         return op(type(objA)(objB), objA)
+
+    print objA, objB
+    print type(objA), type(objB)
     
     raise Exception, "In _operatoreTypePolicy, cannot apply operator"
 
@@ -612,46 +627,6 @@ def _parsePolynomialFromMagma(s, parseCoefficient = parseIntOrFraction):
                 operandStack[0] == Polynomial())) 
 
     return operandStack[-1]
-
-### Other helper functions
-
-# given a list of dictionaries, combine values of the different
-# dictionaries having the same key using combineFunction.
-
-def _combineDicts(listOfDicts, combineFunction):
-    """
-    >>> d = _combineDicts(
-    ...      [ {'key1': 1, 'key2': 2},
-    ...        {'key1': 1} ],
-    ...      combineFunction = operator.add)
-    >>> d['key1']
-    2
-    >>> d['key2']
-    2
-    """
-
-    result = {}
-    for aDict in listOfDicts:
-        for k, v in aDict.items():
-            if result.has_key(k):
-                result[k] = combineFunction(result[k], v)
-            else:
-                result[k] = v
-    return result
-
-# take a dictionary and turn it into a tuple of pairs sorted by keys
-
-def _dictToOrderedTupleOfPairs(d):
-    """
-    >>> _dictToOrderedTupleOfPairs(
-    ...      { 'key3':'value3', 'key1':'value1', 'key2':'value2' })
-    (('key1', 'value1'), ('key2', 'value2'), ('key3', 'value3'))
-    """
-
-    l = d.items()
-    l.sort(key = lambda x:x[0])
-    return tuple(l)
-
 
 ######## OLD OBSOLETE STUFF
 

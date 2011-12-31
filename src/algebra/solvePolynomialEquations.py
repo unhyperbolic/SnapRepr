@@ -1,9 +1,9 @@
 import numpy
 import math
 from algebra.polynomial import Polynomial, uncomparablePrintCoefficientMethod
-from algebra.pari import roots_of_polynomial
-from algebra.pari import random_complex_modulos
-from algebra.pari import number
+#from algebra.pari import roots_of_polynomial
+#from algebra.pari import random_complex_modulos
+#from algebra.pari import number
 
 import globalsettings
 
@@ -23,16 +23,18 @@ def _printPoly(p):
 # fills free variables with random values
 
 def solvePolynomialEquations(polys,
+                             polynomialSolver,
                              free_dim = 0,
                              with_poly_history = False,
                              poly_history="",
-                             variable_dict={},
+                             variable_dict = { },
                              non_linear_equation_encountered=False):
     
-    polys = [polynomial.convertCoefficients(number) for polynomial in polys]
+#    polys = [polynomial.convertCoefficients(number) for polynomial in polys]
 
     if globalsettings.getSetting("solvePolynomialEquationsLog"):
         poly_history += '\n\n\n\n'+'\n'.join(map(_printPoly,polys))+'\n\n============\n'
+
     if not polys:
         assert free_dim == 0
         if with_poly_history:
@@ -43,7 +45,7 @@ def solvePolynomialEquations(polys,
     for i in polys:
         assert isinstance(i,Polynomial)
         
-    univariate_polys = [poly for poly in polys if poly.isUnivariate()]
+    univariate_polys = [ poly for poly in polys if poly.isUnivariate() ]
 
     if globalsettings.getSetting("solvePolynomialEquationsLog"):
         poly_history=poly_history+'\n\n'+str(map(_printPoly,univariate_polys))+'\n'
@@ -56,7 +58,7 @@ def solvePolynomialEquations(polys,
             poly_history = poly_history + '\n\nSolving for %s\n' % variable_name
 
         try:
-            sol = roots_of_polynomial(univariate_poly)
+            sol = polynomialSolver(univariate_poly)
             if globalsettings.getSetting("solvePolynomialEquationsLog"):
                 poly_history = poly_history+'\n'+str(sol)+'\n'
         except Exception as e:
@@ -91,12 +93,15 @@ def solvePolynomialEquations(polys,
         new_variable_dict[variable_name] = value
         new_polys = [
             poly.substitute(
-                {variable_name:Polynomial.constantPolynomial(value)})
+                { variable_name : Polynomial.constantPolynomial(value) })
             for poly in polys if not poly is univariate_poly]
-        new_solutions = solvePolynomialEquations(new_polys, free_dim,
-                                                 with_poly_history,
-                                                 poly_history,
-                                                 new_variable_dict)
+        new_solutions = solvePolynomialEquations(
+            new_polys,
+            polynomialSolver = polynomialSolver,
+            free_dim = free_dim,
+            with_poly_history = with_poly_history,
+            poly_history = poly_history,
+            variable_dict = new_variable_dict)
         solutions = solutions + new_solutions
         
     return solutions

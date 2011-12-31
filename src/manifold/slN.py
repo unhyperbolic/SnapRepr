@@ -15,6 +15,8 @@ from algebra.pari import pari_eval, pari_eval_bool, number, get_pari_allowed_err
 
 from fractions import Fraction
 
+import globalsettings
+
 # PART I
 # Procedures needed to produce the Ptolemy variety
 
@@ -414,6 +416,8 @@ def get_Ptolemy_cochain(t, N, c_params, no_check = False):
 
 def check_solution_on_gluing_equations(t, N, solution, cohomology_class = None):
 
+    maxErr = globalsettings.getSetting("maximalError")
+
     if cohomology_class:
         cohomology_coefficients = (
             cohomology_2_rel_boundary_class_to_coeffs(t,cohomology_class))
@@ -431,27 +435,20 @@ def check_solution_on_gluing_equations(t, N, solution, cohomology_class = None):
             sign_12 = +1
 
         for coord in simplex_coords_with_fixed_sum(4, N-2):
-            if not pari_eval_bool(
-                "abs(- (%s) * (%s) * (%s) - (%s) * (%s) * (%s) + (%s) * (%s)) < (%s)" % (
-                    sign_01,
-                    solution[c_parameter_var(coord+(1,0,0,1),i)],
-                    solution[c_parameter_var(coord+(0,1,1,0),i)],
-                    sign_12,
-                    solution[c_parameter_var(coord+(1,1,0,0),i)],
-                    solution[c_parameter_var(coord+(0,0,1,1),i)],
-                    solution[c_parameter_var(coord+(1,0,1,0),i)],
-                    solution[c_parameter_var(coord+(0,1,0,1),i)],
-                    get_pari_allowed_error())):
 
+            err = (
+                - sign_01 *
+                  solution[c_parameter_var(coord+(1,0,0,1),i)] *
+                  solution[c_parameter_var(coord+(0,1,1,0),i)]
+                - sign_12 *
+                  solution[c_parameter_var(coord+(1,1,0,0),i)] *
+                  solution[c_parameter_var(coord+(0,0,1,1),i)]
+                + solution[c_parameter_var(coord+(1,0,1,0),i)] *
+                  solution[c_parameter_var(coord+(0,1,0,1),i)])
+
+            if abs(err) > maxErr:
                 raise NumericalError(
-                    val =
-                    number(eval_this = "- (%s) * (%s) * (%s) - (%s) * (%s) * (%s) + (%s) * (%s)" % (
-                            sign_01,solution[c_parameter_var(coord+(1,0,0,1),i)],
-                            solution[c_parameter_var(coord+(0,1,1,0),i)],
-                            sign_12,solution[c_parameter_var(coord+(1,1,0,0),i)],
-                            solution[c_parameter_var(coord+(0,0,1,1),i)],
-                            solution[c_parameter_var(coord+(1,0,1,0),i)],
-                            solution[c_parameter_var(coord+(0,1,0,1),i)])),
+                    val = err,
                     msg = "in verify gluing equations")
 
 def check_solution_identification(t, N, solution):    

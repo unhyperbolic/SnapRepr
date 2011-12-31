@@ -7,6 +7,10 @@ import traceback
 import StringIO
 import csv
 
+from fractions import Fraction
+
+import mpmath
+
 this_path, this_file = os.path.split(sys.argv[0])
 abs_path = os.path.abspath(this_path)
 base_path, this_dir = os.path.split(abs_path)
@@ -15,9 +19,12 @@ sys.path.append(base_path)
 try:
     from manifold.triangulation import triangulation, read_triangulation_from_file
     from algebra.polynomial import Polynomial
+    import algebra.mpmathFunctions
     import manifold.slN
     import algebra.magma
     import hashlib
+    from utilities import basicAlgorithms
+    import globalsettings
 except ImportError as e:
     print e
     print
@@ -85,6 +92,14 @@ def main():
     parser = create_parser()
     # Parse command line options
     options, args = parser.parse_args()
+
+    globalsettings.registerSetting("maximalError", mpmath.mpf("0.1") ** 20)
+
+    if options.max_err:
+        globalsettings.setSetting("maximalError",
+                                  mpmath.mpf("0.1") ** options.max_err)
+
+    print globalsettings.getSetting("maximalError")
 
     # Exit writing the header for the CSV file
     if options.print_csv_header:
@@ -162,7 +177,7 @@ def write_magma_files(options, triangulation_filename):
         H = [None] 
     
     # For each cohomology obstruction class h with index c
-    for c, h in zip(range(len(H)), H):
+    for c, h in basicAlgorithms.indexedIterable(H):
         # List all Ptolemy relations with respect to the cohomology class h
         pt_eqns = manifold.slN.get_Ptolemy_relations(t, N, h)
 
@@ -281,8 +296,8 @@ def process_magma_output_headers(options, magma_out, magma_filename):
 
     # Parse primary decomposition from the magma file.
     # This returns a list of objects of type prime_ideal.
-    # A prime_ideal object is derived from a list, but also
-    # has a dimension and number_of_points field.
+    # A PrimeIdeal object is derived from a list, but also
+    # has a dimension and numberOfPoints field.
     try:
         prim_decomp = algebra.magma.parse_primary_decomposition(magma_out)
         csv_dict["Number Components"] = len(prim_decomp)
@@ -312,25 +327,25 @@ def process_magma_output_headers(options, magma_out, magma_filename):
     else:
         # For every prime ideal prime_ideal in the primary decomposition
         # index_prime_ideal is the index of the prime_ideal in the list
-        for index_prime_ideal, prime_ideal in zip(
-            range(len(prim_decomp)),prim_decomp):
+        for index_prime_ideal, prime_ideal in (
+            basicAlgorithms.indexedIterable(prim_decomp)):
 
             csv_dict['Index Component'] = index_prime_ideal
             csv_dict["Dimension"] = prime_ideal.dimension
-            if not prime_ideal.number_of_points is None:
-                csv_dict['Number Solutions'] = prime_ideal.number_of_points
+            if not prime_ideal.numberOfPoints is None:
+                csv_dict['Number Solutions'] = prime_ideal.numberOfPoints
 
             if prime_ideal.dimension == 0:
                 try:
                     cvols = get_complex_volumes(t, N, c, prime_ideal, not_paranoid = not options.paranoid)
 
-                    for i, cvol in zip(range(len(cvols)),cvols):
+                    for i, cvol in basicAlgorithms.indexedIterable(cvols):
                         csv_dict["Index Solution"] = i
-                        rvol = cvol.real()
-                        if rvol.abs() < get_pari_allowed_error():
+                        rvol = cvol.real
+                        if abs(rvol.real) < globalsettings.getSetting("maximalError"):
                             rvol = 0
                         csv_dict["Volume"] = str(rvol)
-                        csv_dict["CS"] = str(cvol.imag())
+                        csv_dict["CS"] = str(cvol.imag)
                         csv_writer.writerow(csv_dict)
 
                 except NumericalError as n:
@@ -353,7 +368,7 @@ def process_magma_output_headers(options, magma_out, magma_filename):
     open(csvOutputFileName, 'w').write(resultString)
     
 
-def get_complex_volumes(t, N, c, prime_ideal, not_paranoid = False):
+def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
 
     all_cvols = []
 
@@ -361,11 +376,21 @@ def get_complex_volumes(t, N, c, prime_ideal, not_paranoid = False):
     # solvePolynomialEquations assumes that prime_ideal is given
     # in Groebner basis
     sys.stderr.write("Solving...\n")
-    solutions = solvePolynomialEquations(prime_ideal)
+
+    def conversionFunction(c):
+        if isinstance(c, Fraction):
+            return mpmath.mpc(c.numerator) / mpmath.mpc(c.denominator)
+        else:
+            return mpmath.mpc(c)
+
+    primeIdealFloatCoeff = primeIdeal.convertCoefficients(conversionFunction)
+    solutions = solvePolynomialEquations(
+        primeIdealFloatCoeff,
+        polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
     sys.stderr.write("Solved...\n")
 
     # Solutions is a list with one element per Galois conjugate
-    if not len(solutions) == prime_ideal.number_of_points:
+    if not len(solutions) == primeIdeal.numberOfPoints:
         raise NumericalError("Number of solutions doesn't match")
 
     id_c_parms = manifold.slN.get_identified_c_parameters(t, N)
@@ -383,13 +408,12 @@ def get_complex_volumes(t, N, c, prime_ideal, not_paranoid = False):
         # to avoid taking the logarithm of a negative real number
         solution = manifold.slN.multiply_solution_by_constant(
             solution, 
-            number("1.0+0.32433234644*I"))
+            mpmath.mpc("1.0","0.32433234644"))
 
         # We assign a value to each Ptolemy coordinate based on the 
         # solution
         c_parms = manifold.slN.map_solution_to_c_parameters(solution,
                                                             id_c_parms)
-
         # Consistency check
         if not not_paranoid:
             manifold.slN.check_solution_identification(t, N, c_parms)
@@ -417,12 +441,14 @@ def get_complex_volumes(t, N, c, prime_ideal, not_paranoid = False):
 
         # Compute the L function and sum for all [z;p,q]
         cvols = [x.L_function() for x in zpqs]
-        cvol = sum(cvols) / pari.I
+        cvol = sum(cvols) / 1j
 
         sys.stderr.write("   %s\n" % cvol)
 
         # Consistency check
-        if not (vol - cvol.real()).abs() < get_pari_allowed_error():
+        maxErr = globalsettings.getSetting("maximalError")
+
+        if not abs(vol - cvol.real) < maxErr:
             raise NumericalError(val = [vol, cvol], 
                                  msg = "Vol and Complex Vol not matching")
         all_cvols.append(cvol)

@@ -87,14 +87,18 @@ def genus(polys, pre_vars = [], post_vars = []):
 
 
 
-class prime_ideal(list):
-    def __init__(self,l,dim, number_of_points = None):
-        super(prime_ideal,self).__init__(l)
-        self.dimension = dim
-        if not number_of_points == '':
-            self.number_of_points = int(number_of_points)
-        else:
-            self.number_of_points = None
+class PrimeIdeal(list):
+    def __init__(self, listOfPolynomials, dimension, numberOfPoints = None):
+        super(PrimeIdeal,self).__init__(listOfPolynomials)
+        self.dimension = dimension
+        self.numberOfPoints = numberOfPoints
+    def convertCoefficients(self, conversionFunction):
+        return PrimeIdeal(
+            [ polynomial.convertCoefficients(conversionFunction)
+              for polynomial in self],
+            dimension = self.dimension,
+            numberOfPoints = self.numberOfPoints)
+            
 
 def parse_primary_decomposition(s_with_backslash):
     """
@@ -144,11 +148,18 @@ def parse_primary_decomposition(s_with_backslash):
         "\[([^\]]*)\]",
         s)
 
+    def parseNumberOfPoints(s):
+        if s == '':
+            return None
+        else:
+            return int(s)
+
     components= [
-        prime_ideal(
-            l = [Polynomial.parseFromMagma(p) for p in polys.split(',')],
-            dim = int(dimension), number_of_points = number_of_points)
-        for dimension, tmp, number_of_points, polys in components]
+        PrimeIdeal(
+            [ Polynomial.parseFromMagma(p) for p in polys.split(',') ],
+            dimension = int(dimension), 
+            numberOfPoints = parseNumberOfPoints(numberOfPoints))
+        for dimension, tmp, numberOfPoints, polys in components]
 
     return components
 

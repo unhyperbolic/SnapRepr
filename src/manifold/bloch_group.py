@@ -3,7 +3,10 @@
 import re
 import math
 import algebra.polynomial
+from algebra import mpmathFunctions
 from algebra.pari import *
+import globalsettings
+import mpmath
 
 class DegenerateSimplexException(Exception):
     pass
@@ -44,11 +47,13 @@ class PtolemyCochain:
 def logOfSquare(c):
     csquare = c * c
 
-    if not ((csquare.real() > 0 or
-             csquare.imag().abs() > get_pari_allowed_error())):
+    maxErr = globalsettings.getSetting("maximalError")
+
+    if not ((csquare.real > 0 or
+             abs(csquare.imag) > maxErr)):
         raise NumericalError(c, msg = "logOfSqaure near branch cut")
 
-    return csquare.log() / 2
+    return mpmath.log(csquare) / 2
  
 class w_triple:
     def __init__(self, P, no_check = False):
@@ -67,15 +72,15 @@ class w_triple:
         w0_e = self.w0.exp()
         w1_e = (-self.w1).exp()
 
-        errs = [(1 - w0_e - w1_e).abs(),
-                (1 + w0_e - w1_e).abs(),
-                (1 - w0_e + w1_e).abs(),
-                (1 + w0_e + w1_e).abs()]
+        errs = [abs(1 - w0_e - w1_e),
+                abs(1 + w0_e - w1_e),
+                abs(1 - w0_e + w1_e),
+                abs(1 + w0_e + w1_e)]
 
-        if not (errs[0] < get_pari_allowed_error() or
-                errs[1] < get_pari_allowed_error() or
-                errs[2] < get_pari_allowed_error() or
-                errs[3] < get_pari_allowed_error()):
+        if not (errs[0] < globalsettings.getSetting("maxError") or
+                errs[1] < globalsettings.getSetting("maxError") or
+                errs[2] < globalsettings.getSetting("maxError") or
+                errs[3] < globalsettings.getSetting("maxError")):
             raise NumericalError(val = errs,
                                  msg = "w triple (%s,%s,%s) from %s %s %s %s %s %s" % 
                                  (self.w0, self.w1, self.w2, P.c01, P.c02, P.c03, P.c12, P.c13, P.c23))
@@ -84,30 +89,59 @@ class w_triple:
             raise NumericalError(val = (self.w0+self.w1+self.w2).abs(),
                                  msg = "w triple (%s,%s,%s) not sum to 0 from %s %s %s %s %s %s" % 
                                  (self.w0, self.w1, self.w2, P.c01, P.c02, P.c03, P.c12, P.c13, P.c23))
-            
+
+def mpmathRoundToInt(z):
+    return int(mpmath.nint(z.real))
 
 class zpq_triple:
     def __init__(self, w, no_check = False):
         assert isinstance(w, w_triple)
         self.sign = w.sign
-
-        self.sign = w.sign
         
-        if w.w0.abs() < get_pari_allowed_error():
-            err1 = 1
-        else:
-            z1 = w.w0.exp()
-            p1 = int( ((w.w0 - z1.log()) / PiI).real() )
-            q1 = int( ((w.w1 + (1 - z1).log()) / PiI).real() )
-            err1 = ((w.w2 + z1.log() - (1 - z1).log() + p1 * PiI + q1 * PiI)).abs()
+        def pqCandidates(z, w = w):
 
-        z2 = - w.w0.exp()
-        p2 = int( ((w.w0 - z2.log()) / PiI).real() )
-        q2 = int( ((w.w1 + (1 - z2).log()) / PiI).real() )
-        err2 = ((w.w2 + z2.log() - (1 - z2).log() + p2 * PiI + q2 * PiI)).abs()
+            PiI = mpmath.pi * 1j
+
+            if abs(1 - z) < globalsettings.getSetting("maximalError"):
+                return (z, 0, 0), 1
+
+            p = mpmathRoundToInt( (w.w0 - mpmath.log(  z)) / PiI)
+            q = mpmathRoundToInt( (w.w1 + mpmath.log(1-z)) / PiI)
+            err = abs(w.w2 + mpmath.log(z) - mpmath.log(1-z) + p * PiI + q * PiI)
+
+            return (z, p, q), err
+
+        candidate1, err1 = pqCandidates(z =   mpmath.exp(w.w0))
+        candidate2, err2 = pqCandidates(z = - mpmath.exp(w.w0))
 
         if err1 < err2:
-            if not err1 < get_pari_allowed_error():
+            candidate, err = candidate1, err1
+        else:
+            candidate, err = candidate2, err2
+
+        if err > globalsettings.getSetting("maximalError"):
+            raise NumericalError(val = err,
+                                 msg = "err1 %s %s" % (candidate, err))
+
+        self.z, self.p, self.q = candidate
+
+        return
+
+        if abs(w.w0) < globalsettings.getSetting("maximalError"):
+            err1 = 1
+        else:
+            z1 = mpmath.exp(w.w0)
+            p1 = int( ((w.w0 - mpmath.log(z1)) / PiI).real )
+            q1 = int( ((w.w1 + mpmath.log(1 - z1)) / PiI).real )
+            err1 = abs((w.w2 + mpmath.log(z1) - mpmath.log(1 - z1) + p1 * PiI + q1 * PiI))
+
+        z2 = - mpmath.exp(w.w0)
+        p2 = int( ((w.w0 - mpmath.log(z2)) / PiI).real )
+        q2 = int( ((w.w1 + mpmath.log(1 - z2)) / PiI).real )
+        err2 = abs((w.w2 + mpmath.log(z2) - mpmath.log(1 - z2) + p2 * PiI + q2 * PiI))
+
+        if err1 < err2:
+            if not err1 < globalsettings.getSetting("maximalError"):
                 raise NumericalError(val = err1,
                                      msg = "err1 %s %s %s %s %s %s" % (
                         z1, p1, q1, w.w0, w.w1, w.w2))
@@ -115,8 +149,8 @@ class zpq_triple:
             self.p = p1
             self.q = q1
         else:
-            if not err2 < get_pari_allowed_error():
-                raise NumericalError(val = err1,
+            if not err2 < globalsettings.getSetting("maximalError"):
+                raise NumericalError(val = err2,
                                      msg = "err1 %s %s %s %s %s %s" % (
                         z2, p2, q2, w.w0, w.w1, w.w2))
             self.z = z2
@@ -124,10 +158,15 @@ class zpq_triple:
             self.q = q2
 
     def L_function(self):
+        p = self.p
+        q = self.q
+        z = self.z
+        PiI = mpmath.pi * 1j
+
         val= (
-              self.z.dilog()
-            + (self.z.log() + self.p * PiI) * ( (1 - self.z).log() + self.q * PiI) / 2
-            - Pi ** 2 / 6)
+              mpmathFunctions.dilog(z)
+            + (mpmath.log(z) + p * PiI) * ( mpmath.log(1 - z) + q * PiI) / 2
+            - mpmath.pi ** 2 / 6)
 
         if self.sign == -1:
             return -val
@@ -135,7 +174,9 @@ class zpq_triple:
             return val
     
     def volume(self):
-        val = (1 - self.z).arg() * self.z.abs().log() + self.z.dilog().imag()
+        z = self.z
+        val = (  mpmath.arg(1 - z) * mpmath.log(abs(z))
+               + mpmathFunctions.dilog(z).imag)
         if self.sign == -1:
             return -val
         else:
