@@ -164,7 +164,7 @@ class zpq_triple:
         PiI = mpmath.pi * 1j
 
         val= (
-              mpmathFunctions.dilog(z)
+              mpmath.polylog(2,z)
             + (mpmath.log(z) + p * PiI) * ( mpmath.log(1 - z) + q * PiI) / 2
             - mpmath.pi ** 2 / 6)
 
@@ -176,7 +176,7 @@ class zpq_triple:
     def volume(self):
         z = self.z
         val = (  mpmath.arg(1 - z) * mpmath.log(abs(z))
-               + mpmathFunctions.dilog(z).imag)
+               + mpmath.polylog(2,z).imag)
         if self.sign == -1:
             return -val
         else:
