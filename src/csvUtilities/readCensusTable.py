@@ -4,34 +4,70 @@ import mpmath
 conversionDict = {
     
     'Volume' : mpmath.mpf,
-    'Tetrahedra' : int
+    'Tetrahedra' : int,
+    'InvariantTraceFieldDegree' : int
 
     }
 
-def readCensusTable(csvFile, sortKey = "Volume"):
+header = ["Manifold",
+          "File",
+          "Ordered",
+          "Tetrahedra",
+          "Cusps",
+          "SL(N,C)",
+          "Obstruction Class",
+          "Index Component",
+          "Number Components",
+          "Dimension",
+          "Additional Eqns",
+          "Number Solutions",
+          "Index Solution",
+          "Warning",
+          "Volume",
+          "CS",
+          "LinearCombinations",
+          "CPUTIME"]
 
-    if isinstance(csvFile, str):
-        csvFile = open(csvFile, 'rb')
+class CensusTable:
+    def __init__(self, listOfDicts, header):
+        assert isinstance(listOfDicts, list)
+        assert isinstance(header, list)
+        if len(listOfDicts) > 0:
+            assert isinstance(listOfDicts[0], dict)
 
-    header = csv.reader(csvFile).next()
+        self.listOfDicts = listOfDicts
+        self.header = header
 
-    csvFile.seek(0)
+def readCensusTable(csvFile,
+                    sortKey = None,
+                    readHeaderFromFile = True):
 
-    censusVolumesReader = csv.DictReader(csvFile)
-    
     def convertDict(d):
 
         global conversionDict
 
         for k, v in d.items():
             if conversionDict.has_key(k):
-                d[k] = conversionDict[k](v)
+                try:
+                    d[k] = conversionDict[k](v)
+                except:
+                    d[k] = None
 
         return d
 
+    if isinstance(csvFile, str):
+        csvFile = open(csvFile, 'rb')
+
+    if readHeaderFromFile:
+        censusVolumesReader = csv.DictReader(csvFile)
+    else:
+        censusVolumesReader = csv.DictReader(csvFile,
+                                             fieldnames = header)
+
     censusVolumesDict = [convertDict(d) for d in censusVolumesReader]
-    
+
     if sortKey:
         censusVolumesDict.sort(key = lambda d: d[sortKey])
         
-    return censusVolumesDict, header
+    return CensusTable(listOfDicts = censusVolumesDict,
+                       header = censusVolumesReader.fieldnames)

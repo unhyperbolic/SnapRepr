@@ -8,7 +8,7 @@ import snappy
 
 maxNumTetsSeparateDirs = 30
 
-def cusped_directory_name(trig):
+def cuspedDirectoryName(trig):
     num_tets = trig.num_tetrahedra()
     if num_tets >= maxNumTetsSeparateDirs:
         return "cusped_%d_higher" % maxNumTetsSeparateDirs
@@ -16,7 +16,7 @@ def cusped_directory_name(trig):
         return "cusped_%d" % num_tets
 
 def createCuspedDirectory(trig):
-    name = cusped_directory_name(trig)
+    name = cuspedDirectoryName(trig)
 
     if os.path.exists(name):
         assert os.path.isdir(name)
@@ -25,6 +25,16 @@ def createCuspedDirectory(trig):
 
     return name
 
+def createClosedDirectory(trig):
+    name = "closed"
+
+    if os.path.exists(name):
+        assert os.path.isdir(name)
+    else:
+        os.mkdir(name)
+
+    return name
+        
 def filename_generic(trig):
     return trig.name()
 
@@ -41,15 +51,16 @@ def find_trig_with_least_tets(trig, no_tries):
     m.sort(key = lambda x:x.num_tetrahedra())
     return m[0]
 
-def write_files_for_sequence_of_trigs(trigs, 
+def write_files_for_sequence_of_trigs(trigs,
                                       filename_function = filename_generic,
+                                      directoryNameFunction = createCuspedDirectory,
                                       no_tries = 1, max_tets = 1000):
     for trig in trigs:
         n_trig = find_trig_with_least_tets(trig, no_tries)
         print n_trig.name()
         if n_trig.num_tetrahedra() <= max_tets:
             filename = (
-                createCuspedDirectory(trig) + 
+                directoryNameFunction(trig) + 
                 '/' +
                 filename_function(trig) + 
                 ".trig")
@@ -59,10 +70,12 @@ def write_files_for_sequence_of_trigs(trigs,
             n_trig.save(filename)
 
 def print_usage():
-    print "Usage: export_trigs_from_SnapPy_census.py OrientableCuspedCensus MIN_NO_TETS MAX_NO_TETS"
-    print "       export_trigs_from_SnapPy_census.py LinkExteriors RETRIANGULATION_TRIES MIN_CROSSINGS MAX_CROSSINGS MIN_COMPONENT MAX_COMPONENT MAX_NO_TETS"
-    print "       export_trigs_from_SnapPy_census.py MorwenLinks   RETRIANGULATION_TRIES MIN_CROSSINGS MAX_CROSSINGS MIN_COMPONENT MAX_COMPONENT MAX_NO_TETS"
-    print "       export_trigs_from_SnapPy_census.py KnotExteriors RETRIANGULATION_TRIES MIN_CROSSINGS MAX_CROSSINGS MAX_NO_TETS"
+    print "Usage: SnapReprExportTrigsFromSnappyCensus.py OrientableCuspedCensus MIN_NO_TETS MAX_NO_TETS"
+    print "       SnapReprExportTrigsFromSnappyCensus.py LinkExteriors RETRIANGULATION_TRIES MIN_CROSSINGS MAX_CROSSINGS MIN_COMPONENT MAX_COMPONENT MAX_NO_TETS"
+    print "       SnapReprExportTrigsFromSnappyCensus.py MorwenLinks   RETRIANGULATION_TRIES MIN_CROSSINGS MAX_CROSSINGS MIN_COMPONENT MAX_COMPONENT MAX_NO_TETS"
+    print "       SnapReprExportTrigsFromSnappyCensus.py KnotExteriors RETRIANGULATION_TRIES MIN_CROSSINGS MAX_CROSSINGS MAX_NO_TETS"
+
+    print "       SnapReprExportTrigsFromSnappyCensus.py OrientableClosedCensus START_INDEX STOP_INDEX"
 
 if not len(sys.argv) >= 3: 
     print_usage()
@@ -99,6 +112,22 @@ if sys.argv[1] == "OrientableCuspedCensus":
         write_files_for_sequence_of_trigs(
             snappy.OrientableCuspedCensus()[4815:])
         
+elif sys.argv[1] == "OrientableClosedCensus":
+    if not len(args) == 2:
+        print_usage()
+        sys.exit(1)
+
+    firstIndex, lastIndex = args
+
+    def directoryNameFunction(trig, 
+                              name = createClosedDirectory(None)):
+        return name
+
+    write_files_for_sequence_of_trigs(
+        snappy.OrientableClosedCensus()[firstIndex:lastIndex],
+        filename_function = str,
+        directoryNameFunction = directoryNameFunction)
+
 elif sys.argv[1] == "LinkExteriors":
     if not len(args) == 6:
         print_usage()

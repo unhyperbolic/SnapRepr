@@ -19,12 +19,16 @@ sys.path.append(base_path)
 try:
     from manifold.triangulation import triangulation, read_triangulation_from_file
     from algebra.polynomial import Polynomial
+    from algebra.solvePolynomialEquations import solvePolynomialEquations
     import algebra.mpmathFunctions
     import manifold.slN
     import algebra.magma
     import hashlib
     from utilities import basicAlgorithms
     import globalsettings
+    from algebra.exceptions import NumericalError
+    import utilities.printNumbers
+    from csvUtilities import readCensusTable
 except ImportError as e:
     print e
     print
@@ -33,79 +37,24 @@ except ImportError as e:
     print "Base path is                     :", base_path
     sys.exit(1)
 
-
-def load_pari(options):
-    try:
-        import algebra.pari as pari
-        from algebra.pari import number, set_pari_precision, set_pari_allowed_error, get_pari_allowed_error, NumericalError
-        from algebra.solvePolynomialEquations import solvePolynomialEquations
-
-        global pari
-        global number, set_pari_precision, set_pari_allowed_error, get_pari_allowed_error, NumericalError
-        global solvePolynomialEquations
-    except ImportError as e:
-        print "Error while loading pari"
-        print "It is necessary to compile the cython code, see README"
-        print
-        print e
-        print
-        print "This program was called as       :", sys.argv[0]
-        print "Absolute path to this program is :", abs_path
-        print "Base path is                     :", base_path
-        sys.exit(1)
-
-    # Set precision for PARI
-    if options.precision and options.max_err:
-        set_pari_precision(options.precision)
-        set_pari_allowed_error(options.max_err)
-    elif options.precision:
-        set_pari_precision(options.precision)
-        set_pari_allowed_error(options.precision - 6)
-    elif options.max_err:
-        set_pari_precision(options.max_err + 6)
-        set_pari_allowed_error(options.max_err)
-    else:
-        set_pari_precision(30)
-        set_pari_allowed_error(20)
-
-        
-
-CSVHeader = ["Manifold",
-             "File",
-             "Ordered",
-             "Tetrahedra",
-             "Cusps",
-             "SL(N,C)",
-             "Obstruction Class",
-             "Index Component",
-             "Number Components",
-             "Dimension",
-             "Additional Eqns",
-             "Number Solutions",
-             "Index Solution",
-             "Warning",
-             "Volume",
-             "CS",
-             "CPUTIME"]
-
 def main():
     parser = create_parser()
     # Parse command line options
     options, args = parser.parse_args()
 
-    globalsettings.registerSetting("maximalError", mpmath.mpf("0.1") ** 20)
+    globalsettings.setSetting("maximalError",
+                              mpmath.mpf("0.1") ** options.maximalError)
+    globalsettings.setSetting("maximalErrorDigits",
+                              options.maximalError)
 
-    if options.max_err:
-        globalsettings.setSetting("maximalError",
-                                  mpmath.mpf("0.1") ** options.max_err)
-
-    print globalsettings.getSetting("maximalError")
+    mpmath.mp.dps = options.maximalError + options.extraDigits
 
     # Exit writing the header for the CSV file
     if options.print_csv_header:
         output = StringIO.StringIO()
-        csv_writer = csv.DictWriter(output, fieldnames = CSVHeader)
-        csv_writer.writerow(dict(zip(CSVHeader, CSVHeader)))
+        csv_writer = csv.DictWriter(output, fieldnames = readCensusTable.header)
+        csv_writer.writerow(dict(zip(readCensusTable.header,
+                                     readCensusTable.header)))
         print output.getvalue()[:-1]
         sys.exit(0)
 
@@ -127,7 +76,6 @@ def main():
     elif "MAGMA=OUTPUT=FOR=SNAPREPR" in input_file:
         # magma breaks long lines putting a \ at the break
         # we replace those line breaks
-        load_pari(options)
         magma_out = ''.join([x.strip() for x in input_file.split('\\\n')])
 
         process_magma_output_headers(options, magma_out, 
@@ -246,7 +194,7 @@ def process_magma_output_headers(options, magma_out, magma_filename):
     csvOutputFileName = csvOutputFilenameBase + '_magma.csv'
 
     csv_writer = csv.DictWriter(output, 
-                                fieldnames = CSVHeader,
+                                fieldnames = readCensusTable.header,
                                 restval = "")
     csv_dict = { "File": magma_filename}
 
@@ -341,11 +289,8 @@ def process_magma_output_headers(options, magma_out, magma_filename):
 
                     for i, cvol in basicAlgorithms.indexedIterable(cvols):
                         csv_dict["Index Solution"] = i
-                        rvol = cvol.real
-                        if abs(rvol.real) < globalsettings.getSetting("maximalError"):
-                            rvol = 0
-                        csv_dict["Volume"] = str(rvol)
-                        csv_dict["CS"] = str(cvol.imag)
+                        csv_dict["Volume"] = utilities.printNumbers.printRealNumberAsFixed(cvol.real)
+                        csv_dict["CS"] = utilities.printNumbers.printRealNumberAsFixed(cvol.imag)
                         csv_writer.writerow(csv_dict)
 
                 except NumericalError as n:
@@ -443,7 +388,8 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
         cvols = [x.L_function() for x in zpqs]
         cvol = sum(cvols) / 1j
 
-        sys.stderr.write("   %s\n" % cvol)
+        sys.stderr.write("   %s\n" % (
+            utilities.printNumbers.printComplexNumberAsFixed(cvol)))
 
         # Consistency check
         maxErr = globalsettings.getSetting("maximalError")
@@ -517,11 +463,11 @@ def create_parser():
                       help = "Write magma files for non zero dimension ideals")
     parser.add_option("-p", "--precision",
                       type = "int",
-                      dest = "max_err", default = None,
-                      help = "Digits of precision")
-    parser.add_option("-P", "--internal-precision",
+                      dest = "maximalError", default = 10,
+                      help = "Maximal error in decimal digits")
+    parser.add_option("-P", "--extra-digits",
                       type = "int",
-                      dest = "precision", default = None,
+                      dest = "extraDigits", default = 6,
                       help = "Digits of precision in intermediate calculation")
     parser.add_option("-e", "--exact",
                       dest = "exact", default = False,

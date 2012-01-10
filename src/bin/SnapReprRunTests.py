@@ -31,9 +31,11 @@ except ImportError as e:
 
 testPath = base_path + "/tests"
 testTriangulationsPath = testPath + "/triangulations"
+testCensusTablePath = testPath + "/CensusTable"
 
 globalsettings.setSetting("testPath", testPath)
 globalsettings.setSetting("testTriangulationsPath", testTriangulationsPath)
+globalsettings.setSetting("testCensusTablePath", testCensusTablePath)
 
 doctest.testmod(manifold.triangulation)
 doctest.testmod(manifold.slN)
@@ -41,3 +43,6 @@ doctest.testmod(algebra.polynomial)
 doctest.testmod(algebra.magma)
 doctest.testmod(utilities.basicAlgorithms)
 doctest.testmod(algebra.mpmathFunctions)
+
+import linearCombinations.testTwoTerms
+linearCombinations.testTwoTerms.testAll()

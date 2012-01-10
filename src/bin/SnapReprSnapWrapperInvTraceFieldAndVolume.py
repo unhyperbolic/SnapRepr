@@ -89,8 +89,8 @@ def process_file(trig_file):
         rcvol = r.group(1)
 
     f = re.search("Invariant trace field: (.*) \[",s2)
-    fp = '"-"'
-    fdeg = '"-"'
+    fp = '-'
+    fdeg = '-'
 
     if f:
         fp = f.group(1)
@@ -116,7 +116,7 @@ if not len(sys.argv) == 2:
     sys.exit(1)
 
 if sys.argv[1] == '-H':
-    print 'Name,Type,Tetrahedra,Volume,CS,"Invariant Trace Field",Degree'
+    print 'Name,Type,Tetrahedra,Volume,CS,"InvariantTraceField","InvariantTraceFieldDegree"'
 else:
     k = process_file(sys.argv[1])
     if k:

@@ -1,5 +1,11 @@
 import operator
 
+def safeDictLookup(d, k, default = None):
+    if d.has_key(k):
+        return d[k]
+    else:
+        return default
+
 def indexedIterable(iterable):
     """
     >>> for index, item in indexedIterable(["Zero", "One", "Two", "Three"]):
