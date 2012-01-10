@@ -1,6 +1,7 @@
 import mpmath
 import globalsettings
 from libc.stdlib cimport malloc, free
+from linearCombinations import binarySearch
 
 cdef extern from "math.h":
     double fabs(double x)
@@ -36,6 +37,23 @@ cdef class censusTable:
     def __dealloc__(self):
         if self.volumesArray is not NULL:
             free(self.volumesArray)
+
+    def findAsUpToTwoTerms(self, target, factorRange = 20):
+        
+        r = self.findAsMultiple(target, factorRange = factorRange)
+        if r:
+            return r
+        return self.findAsTwoTermCombination(target,
+                                             factorRange = factorRange)
+
+    def findAsMultiple(self, target, factorRange = 20):
+        results = []
+        for factor in range(1, factorRange + 1):
+            for row in binarySearch.matchingRows(
+                self.censusTableDicts,
+                key = "Volume", value = target / factor):
+                results.append([(factor, row)])
+        return results
 	    
     def findAsTwoTermCombination(self, target, factorRange = 20):
         results = []

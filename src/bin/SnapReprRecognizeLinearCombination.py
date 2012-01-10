@@ -36,6 +36,10 @@ def main():
     
     options, args = parser.parse_args()
 
+    if not args:
+        parser.print_help()
+        sys.exit(1)
+
     print "Setting maximal errors..."
 
     globalsettings.setSetting("maximalError",
@@ -48,7 +52,7 @@ def main():
     if options.tableFile:
         censusTableFile = options.tableFile
     else:
-        censusTableFile = base_path + "/tests/CensusTable/CuspedOrientableCensus_2345Tets.csv"
+        censusTableFile = base_path + "/tests/CensusTable/exampleCensusTable.csv"
 
     print "Reading census table %s..." % censusTableFile
     
@@ -76,22 +80,24 @@ def processCsvFiles(files, table):
 
             print csvFileName, "->", csvOutFilename
 
-            csvTable = csvUtilities.readCensusTable.readCensusTable(csvFileName, readHeaderFromFile = False)
-            newHeader = csvTable.header
-            newHeader = newHeader + ['LinearCombinations']
+            csvTable = csvUtilities.readCensusTable.readCensusTable(csvFileName, 
+                                                                    readHeaderFromFile = False)
   
             csv_writer = csv.DictWriter(open(csvOutFilename,'w'),
-                                    fieldnames = newHeader)
+                                        fieldnames = csvTable.header)
 
             for row in csvTable.listOfDicts:
-                if row.has_key('Volume') and not row['Volume'] is None:
+                if (row.has_key('Volume') and 
+                    not row['Volume'] is None and
+                    row['Volume'] > globalsettings.getSetting("maximalError")):
                     row['LinearCombinations'] = ' | '.join(
                         [
                             formatLinearCombination(l) 
                             for l in 
-                            table.findAsTwoTermCombination(row['Volume'])])
+                            table.findAsUpToTwoTerms(row['Volume'])])
+                
                 csv_writer.writerow(row)
-
+                    
     
 def create_parser():
     

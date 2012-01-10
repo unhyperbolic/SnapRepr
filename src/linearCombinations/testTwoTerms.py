@@ -9,7 +9,7 @@ globalsettings.setSetting("maximalError", mpmath.mpf("0.1") ** 50)
 globalsettings.setSetting("maximalErrorDigits", 50)
 
 testCensusTablePath = globalsettings.getSetting("testCensusTablePath")
-censusTableFile = testCensusTablePath + "/CuspedOrientableCensus_2345Tets.csv"
+censusTableFile = testCensusTablePath + "/exampleCensusTable.csv"
 censusTable = readCensusTable(censusTableFile, sortKey = "Volume")
 
 representatives = filterRepresentativeMfds.filterRepresentativeMfds(censusTable.listOfDicts)
@@ -82,8 +82,6 @@ def testTwoTerms():
         formatLinearCombination(l) for l in table.findAsTwoTermCombination(vol)]
 
     vol = representatives[5]['Volume'] * 4 - representatives[7]['Volume'] * 5
-
-    print [formatLinearCombination(l) for l in table.findAsTwoTermCombination(vol)]
 
     assert '4 * m004(1,2) -5 * m003(-4,1)' in [
         formatLinearCombination(l) for l in table.findAsTwoTermCombination(vol)]
