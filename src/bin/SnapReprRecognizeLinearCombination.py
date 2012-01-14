@@ -52,7 +52,7 @@ def main():
     if options.tableFile:
         censusTableFile = options.tableFile
     else:
-        censusTableFile = base_path + "/tests/CensusTable/exampleCensusTable.csv"
+        censusTableFile = base_path + "/data/censusVolumesAndInvTraceFields.csv"
 
     print "Reading census table %s..." % censusTableFile
     
