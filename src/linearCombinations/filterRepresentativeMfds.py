@@ -50,9 +50,9 @@ def matchLink(row):
         else:
             preference = 2
 
-    matchMorwen = re.match("(\d+)(\^(\d+))?_(DT\[\w+\]) ", row['Name'])
+    matchMorwen = re.match("(\d+)(\^(\d+))?_(DT\[\w+\])", row['Name'])
     if matchMorwen:
-        crossings, components, s, index = matchMorwen.groups()
+        crossings, dum, components, index = matchMorwen.groups()
         preference = 3
     
     if not crossings:
@@ -162,7 +162,7 @@ def filterRepresentativeMfds(listOfDicts,
                          formatFunction(
                             canonicalMfdsWithThatVolumeOrMultiple)})
             else:
-                raise Exception, "Unmatched manifold"
+                raise Exception, "Unmatched manifold for " + str(mfdsWithThatVolumeOrMultiple)
 
     return representatives
 

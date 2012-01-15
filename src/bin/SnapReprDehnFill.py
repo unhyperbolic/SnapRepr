@@ -27,6 +27,7 @@ for c in range(M.num_cusps()):
                     M.dehn_fill((i,j),c)
                     k = M.solution_type()
                     if not ('flat' in k or 'degenerate' in k):
-                        newFilename = baseFile + "(%d,%d)" % (i,j)
+                        newFilename = baseFile + "".join(
+                            ["(%d,%d)" % (i,j) if x == c else "(0,0)" for x in range(M.num_cusps())])
                         print newFilename + '.trig'
                         M.save(newFilename + ".trig")

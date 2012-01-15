@@ -9,7 +9,7 @@ def formatLinearCombination(l):
         if factor == +1:
             result += "+"
         elif factor == -1:
-            result -= "-"
+            result += "-"
         else:
             result += "%+d * " % factor
         result += row['Representatives'] + " "

@@ -406,6 +406,10 @@ class Polynomial(object):
     def isUnivariate(self):
         return len(self.variables()) <= 1
 
+    # true if the polynomial is linear
+    def isLinear(self):
+        return self.isUnivariate() and self.degree() == 1
+
     # get leading coefficient
     def leadingCoefficient(self):
         assert self.isUnivariate()

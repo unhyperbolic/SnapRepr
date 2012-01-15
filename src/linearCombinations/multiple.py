@@ -17,3 +17,6 @@ class Multiple:
             return self.row['Name'] + "/" + str(self.factor)
         else:
             return self.row['Name']
+
+    def __repr__(self):
+        return str(self)

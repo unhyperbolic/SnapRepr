@@ -5,6 +5,8 @@ from algebra.polynomial import Polynomial, uncomparablePrintCoefficientMethod
 #from algebra.pari import random_complex_modulos
 #from algebra.pari import number
 
+from fractions import Fraction
+
 import globalsettings
 
 globalsettings.registerSetting("solvePolynomialEquationsLog", True)
@@ -19,6 +21,74 @@ class SolverException(Exception):
 def _printPoly(p):
     return p.printMagma(
         printCoefficientMethod = uncomparablePrintCoefficientMethod)
+
+def filterPoly(polys, skip):
+    return [poly for poly in polys if not poly == skip]
+
+def solvePolynomialEquationsExactly(polys,
+                                    nf = None, 
+                                    variableDict = None):
+
+    # nf is a polynomial in x encoding a number field
+
+    # nf = x^2 + 1
+
+    # variable contains the variables already bound as polynomials in the variable of the number field
+
+    # a : x + 2
+
+    if not variableDict:
+        variableDict = {}
+
+    if not polys:
+        return variableDict, nf
+
+    univariatePolys = [poly for poly in polys if poly.isUnivariate()]
+    linearPolys = [poly for poly in polys if poly.isLinear()]
+
+    if linearPolys:
+        linearPoly = linearPolys[0]
+
+        factor, constant = linearPoly.getCoefficients(Fraction)
+        variable = linearPoly.variables()[0]
+
+        if not isinstance(constant, Polynomial):
+            constant = Polynomial.constantPolynomial(constant)
+
+        factor = Polynomial.constantPolynomial(-Fraction(1)/factor)
+
+        variableDict[variable] = factor * constant
+
+        return solvePolynomialEquationsExactly(
+            filterPoly(polys, linearPoly),
+            nf,
+            variableDict)
+
+    if univariatePolys:
+        univariatePoly = univariatePolys[0]
+        variable = univariatePoly.variables()[0]
+
+        if not nf:
+            nf = univariatePoly.substitute({variable: Polynomial.fromVariableName('x')})
+        else:
+
+            univariatePoly = univariatePoly.subsitute({variable: Polynomial.fromVariableName('y')})
+
+            pariNf = nfinit(nf)
+            nf, transform = rnfequation(pariNf, univariatePoly)
+
+            for k in variableDict.keys():
+                variableDict[k] = variableDict[k].substitute({'x' : transform})
+
+        variableDict[variable] = Polynomial.fromVariableName('x')
+            
+        return solvePolynomialEquationsExactly(
+            filterPoly(polys, univariatePoly),
+            nf,
+            variableDict)
+
+    raise Exception, "Should never get here"
+
 
 # fills free variables with random values
 
