@@ -48,7 +48,7 @@ def process_file(trig_file):
     tmp_in_file.write("set digits_printed 120 f\n")
     tmp_in_file.write("print solution_type\n")
     tmp_in_file.write("print volume\n")
-    tmp_in_file.write("print complex_volume\n")
+    #tmp_in_file.write("print complex_volume\n")
     tmp_in_file.write("quit\n")
     tmp_in_file.close()
 
