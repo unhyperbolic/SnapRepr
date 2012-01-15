@@ -463,11 +463,11 @@ def create_parser():
                       help = "Write magma files for non zero dimension ideals")
     parser.add_option("-p", "--precision",
                       type = "int",
-                      dest = "maximalError", default = 10,
+                      dest = "maximalError", default = 60,
                       help = "Maximal error in decimal digits")
     parser.add_option("-P", "--extra-digits",
                       type = "int",
-                      dest = "extraDigits", default = 6,
+                      dest = "extraDigits", default = 20,
                       help = "Digits of precision in intermediate calculation")
     parser.add_option("-e", "--exact",
                       dest = "exact", default = False,
