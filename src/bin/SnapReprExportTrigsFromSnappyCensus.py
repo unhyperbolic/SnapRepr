@@ -60,9 +60,9 @@ def write_files_for_sequence_of_trigs(trigs,
         print n_trig.name()
         if n_trig.num_tetrahedra() <= max_tets:
             filename = (
-                directoryNameFunction(trig) + 
+                directoryNameFunction(n_trig) + 
                 '/' +
-                filename_function(trig) + 
+                filename_function(n_trig) + 
                 ".trig")
             print filename
 
