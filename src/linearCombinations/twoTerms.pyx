@@ -53,7 +53,7 @@ cdef class censusTable:
                 self.censusTableDicts,
                 key = "Volume", value = target / factor):
                 results.append([(factor, row)])
-		if displayOnlyOne:
+                if displayOnlyOne:
                     return results
         return results
 	    
