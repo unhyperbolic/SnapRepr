@@ -7,7 +7,7 @@ def keyTableUnique(listOfDicts, key):
     keyedTable = {}
 
     for d in listOfDicts:
-        if d.has_key[key]:
+        if d.has_key(key):
             keyedTable[d[key]] = d
 
     return keyedTable
@@ -20,8 +20,8 @@ def keyTable(listOfDicts, key):
     keyedTable = {}
 
     for d in listOfDicts:
-        if d.has_key[key]:
-            if keyedTable.has_key[key]:
+        if d.has_key(key):
+            if keyedTable.has_key(key):
                 keyedTable[key].add(d)
             else:
                 keyedTable[key] = set([d])

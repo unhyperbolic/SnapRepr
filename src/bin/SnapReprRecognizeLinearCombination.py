@@ -20,8 +20,10 @@ try:
     from csvUtilities.readCensusTable import readCensusTable
     import globalsettings
     import csvUtilities
+    import csvUtilities.keyTable
     from linearCombinations import filterRepresentativeMfds, twoTerms
     from linearCombinations.formatLinearCombination import formatLinearCombination
+    from utilities.basicAlgorithms import safeDictLookup
 except ImportError as e:
     print e
     print
@@ -58,6 +60,8 @@ def main():
     
     censusTable = readCensusTable(censusTableFile, sortKey = "Volume")
 
+    nameKeyedCensusTable = csvUtilities.keyTable.keyTableUnique(censusTable.listOfDicts, key = "Name")
+
     print "Finding representatives..."
     representatives = filterRepresentativeMfds.filterRepresentativeMfds(censusTable.listOfDicts)
 
@@ -65,9 +69,32 @@ def main():
     table = twoTerms.censusTable(representatives)
     
     print "Processing files..."
-    processCsvFiles(args, table)
+    processCsvFiles(args, table, nameKeyedCensusTable)
 
-def processCsvFiles(files, table):
+def isGeometric(nameKeyedCensusTable, row):
+
+    print row
+
+    name = safeDictLookup(row, "Manifold")
+
+    print "Name", name
+
+    censusTableRow = safeDictLookup(nameKeyedCensusTable, name)
+
+    print "censusTableRow", censusTableRow
+
+    volGeometric = safeDictLookup(censusTableRow, "Volume")
+
+    N = safeDictLookup(row, "SL(N,C)")
+
+    print volGeometric, N
+
+    return (volGeometric and N and 
+            ((abs(row['Volume'] - volGeometric * (N-1) * N * (N+1) / 6))
+             < globalsettings.getSetting("maximalError")))
+
+
+def processCsvFiles(files, table, nameKeyedCensusTable):
 
     for csvFileName in files:
         
@@ -88,13 +115,20 @@ def processCsvFiles(files, table):
 
             for row in csvTable.listOfDicts:
                 if (row.has_key('Volume') and 
-                    not row['Volume'] is None and
-                    row['Volume'] > globalsettings.getSetting("maximalError")):
-                    row['LinearCombinations'] = ' | '.join(
-                        [
-                            formatLinearCombination(l) 
-                            for l in 
-                            table.findAsUpToTwoTerms(row['Volume'])])
+                    not row['Volume'] is None):
+                    if row['Volume'] > globalsettings.getSetting("maximalError"):
+                        if isGeometric(nameKeyedCensusTable, row):
+                            linComb = "geometric"
+                        else:
+
+                            linComb = ' | '.join(
+                                [
+                                    formatLinearCombination(l) 
+                                    for l in 
+                                    table.findAsUpToTwoTerms(row['Volume'])])
+                        if not linComb:
+                            linComb = 'None found'
+                        row['LinearCombinations'] = linComb
                 
                 csv_writer.writerow(row)
                     

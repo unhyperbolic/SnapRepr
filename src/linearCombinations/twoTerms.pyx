@@ -46,13 +46,15 @@ cdef class censusTable:
         return self.findAsTwoTermCombination(target,
                                              factorRange = factorRange)
 
-    def findAsMultiple(self, target, factorRange = 20):
+    def findAsMultiple(self, target, factorRange = 20, displayOnlyOne = True):
         results = []
         for factor in range(1, factorRange + 1):
             for row in binarySearch.matchingRows(
                 self.censusTableDicts,
                 key = "Volume", value = target / factor):
                 results.append([(factor, row)])
+		if displayOnlyOne:
+                    return results
         return results
 	    
     def findAsTwoTermCombination(self, target, factorRange = 20):

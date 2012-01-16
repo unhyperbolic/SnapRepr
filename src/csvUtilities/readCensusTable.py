@@ -5,7 +5,8 @@ conversionDict = {
     
     'Volume' : mpmath.mpf,
     'Tetrahedra' : int,
-    'InvariantTraceFieldDegree' : int
+    'InvariantTraceFieldDegree' : int,
+    'SL(N,C)' : int
 
     }
 
