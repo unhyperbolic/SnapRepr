@@ -72,23 +72,10 @@ def main():
     processCsvFiles(args, table, nameKeyedCensusTable)
 
 def isGeometric(nameKeyedCensusTable, row):
-
-    print row
-
     name = safeDictLookup(row, "Manifold")
-
-    print "Name", name
-
     censusTableRow = safeDictLookup(nameKeyedCensusTable, name)
-
-    print "censusTableRow", censusTableRow
-
     volGeometric = safeDictLookup(censusTableRow, "Volume")
-
     N = safeDictLookup(row, "SL(N,C)")
-
-    print volGeometric, N
-
     return (volGeometric and N and 
             ((abs(row['Volume'] - volGeometric * (N-1) * N * (N+1) / 6))
              < globalsettings.getSetting("maximalError")))
