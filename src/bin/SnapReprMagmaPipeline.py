@@ -259,13 +259,13 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
 
     csvOutputFilenameBase = magma_filename
 
-    sys.stderr.write("Output File: %s\n" % csvOutputFilenameBase)
-
     if magma_filename[-6:] == '.magmi':
         csvOutputFilenameBase = magma_filename[:-6]
     if magma_filename[-10:] == '.magmi_out':
         csvOutputFilenameBase = magma_filename[:-10]
     csvOutputFileName = csvOutputFilenameBase + '_magmi.csv'
+
+    sys.stderr.write("Output File: %s\n" % csvOutputFileName)
 
     csv_writer = csv.DictWriter(output, 
                                 fieldnames = readCensusTable.header,
