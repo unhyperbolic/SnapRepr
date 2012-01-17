@@ -73,14 +73,6 @@ def main():
         # Triangulation
         write_magma_files(options, triangulation_filename = args[0])
 
-    elif "MAGMA=OUTPUT=FOR=SNAPREPR" in input_file:
-        # magma breaks long lines putting a \ at the break
-        # we replace those line breaks
-        magma_out = ''.join([x.strip() for x in input_file.split('\\\n')])
-
-        process_magma_output_headers(options, magma_out, 
-                                     magma_filename = args[0])
-
     elif "MAGMA=INPUT=FROM=SNAPREPR" in input_file:
 
         print "This file is supposed to be processed with MAGMA"
@@ -89,6 +81,19 @@ def main():
         print "Then:"
         print "      slN_representations.py %s_out" % args[0]
 
+    elif "MAGMA=OUTPUT=FOR=SNAPREPR" in input_file:
+        # magma breaks long lines putting a \ at the break
+        # we replace those line breaks
+        magma_out = ''.join([x.strip() for x in input_file.split('\\\n')])
+
+        if "MAGMA=OUTPUT=STAGE2=FOR=SNAPREPR" in input_file:
+
+            process_magma_output_headers_stage2(options, magma_out, 
+                                                magma_filename = args[0])
+            
+        else:
+            process_magma_output_headers(options, magma_out,
+                                         magma_filename = args[0])
     else:
 
         sys.stderr.write("Could not recognize a SnapPea triangulation file or a MAGMA output file ????\n\n")
@@ -180,6 +185,75 @@ def write_magma_files(options, triangulation_filename):
         open(outfile,'w').write(comment + header + out)
 
 def process_magma_output_headers(options, magma_out, magma_filename):
+
+    outputFileNameBase = magma_filename
+    if magma_filename[-6:] == '.magma':
+        outputFileNameBase = magma_filename[:-6]
+    if magma_filename[-10:] == '.magma_out':
+        outputFileNameBase = magma_filename[:-10]
+    outputFileName = outputFileNameBase + '.magmi'
+    
+    print "Writing next file to be processed with magma:", outputFileName
+
+    error_condition = None
+
+    try:
+        # parse "TERM ORDER       : [ 'a', 'b', 'c' ]
+        term_order  = re.search("TERM ORDER       : \[(.*?)\]",
+                                magma_out,
+                                re.DOTALL).group(1)
+        term_order  = [ x.strip()[1:-1] for x in term_order.split(',')]
+    except:
+        error_condition = "Could not parse TERM ORDER in magma output file"
+
+    prim_decomp = []
+
+    try:
+        prim_decomp = algebra.magma.parse_primary_decomposition(magma_out)
+    except:
+        error_condition = "Could not parse PRIMARY DECOMPOSITION"
+
+    header  = '/* MAGMA=INPUT=FROM=SNAPREPR */\n'
+    header += '/* STAGE2=INPUT=FOR=ABSOLUTIZE */\n'
+    header += '/* This will print a copy of the old file magma file */\n'
+    header += 'print "%s\\n";\n' % '\\n'.join(magma_out.split('\n'))
+    header += '/* This will print the new stuff */\n'
+    header += 'print "MAGMA=OUTPUT=STAGE2" cat "=FOR=SNAPREPR";\n'
+    
+    if not error_condition:
+        pass
+    else:
+        print error_condition
+        header += 'print "%s";\n' % error_condition
+
+    newMagmaCommands = ""
+        
+    for index, component in basicAlgorithms.indexedIterable(prim_decomp):
+
+        newMagmaCommands += 'print "VARIETY=NUMBER=%d=BEGINS=HERE";\n' % index
+
+        newMagmaCommands += (
+            'print "DIMENSION        : %d";\n' % component.dimension)
+
+        if component.dimension == 0:
+            newMagmaCommands += (
+                'print "NUMBEROFPOINTS   : %d";\n' % component.numberOfPoints)
+
+            newMagmaCommands += algebra.magma.absolutizeVariety(component,
+                                                                term_order)
+
+
+        newMagmaCommands += 'print "VARIETY=NUMBER=%d=ENDS=HERE";\n' % index
+
+    outputFile = open(outputFileName, 'w')
+    outputFile.write(header + newMagmaCommands)
+
+    
+    # print "FIRST IDEAL:"
+    # print "NUMBER FIELD:", result of computiation
+    # print "
+
+def process_magma_output_headers_stage2(options, magma_out, magma_filename):
     error_condition = ""
     output = StringIO.StringIO()
 
@@ -187,11 +261,11 @@ def process_magma_output_headers(options, magma_out, magma_filename):
 
     sys.stderr.write("Output File: %s\n" % csvOutputFilenameBase)
 
-    if magma_filename[-6:] == '.magma':
+    if magma_filename[-6:] == '.magmi':
         csvOutputFilenameBase = magma_filename[:-6]
-    if magma_filename[-10:] == '.magma_out':
+    if magma_filename[-10:] == '.magmi_out':
         csvOutputFilenameBase = magma_filename[:-10]
-    csvOutputFileName = csvOutputFilenameBase + '_magma.csv'
+    csvOutputFileName = csvOutputFilenameBase + '_magmi.csv'
 
     csv_writer = csv.DictWriter(output, 
                                 fieldnames = readCensusTable.header,
@@ -227,7 +301,7 @@ def process_magma_output_headers(options, magma_out, magma_filename):
 
     try:
         t_data =       re.search(('==TRIANGULATION=BEGINS=='
-                                  '(.*)'
+                                  '(.*?)'
                                   '==TRIANGULATION=ENDS=='),
                                  magma_out,
                                  re.DOTALL).group(1)
@@ -258,7 +332,7 @@ def process_magma_output_headers(options, magma_out, magma_filename):
         error_condition = 'MAGMA crashed/aborted'
         
     if "All virtual memory has been exhausted" in magma_out:
-        error_condition = 'MAGMA out of memory'
+        error_condition = 'MAGMA out of memory'            
 
     # Handle various Error Conditions
     if error_condition:
@@ -283,7 +357,25 @@ def process_magma_output_headers(options, magma_out, magma_filename):
             if not prime_ideal.numberOfPoints is None:
                 csv_dict['Number Solutions'] = prime_ideal.numberOfPoints
 
+            try:
+                varietyData = re.search(
+                    ('VARIETY=NUMBER=%d=BEGINS=HERE'
+                     '(.*?)'
+                     'VARIETY=NUMBER=%d=ENDS=HERE') % (index_prime_ideal, 
+                                                       index_prime_ideal),
+                    magma_out,
+                    re.DOTALL).group(1).strip()
+            except:
+                error_condition = "Could not parse Variety Output %d" % index_prime_ideal
+
             if prime_ideal.dimension == 0:
+                try:
+                    csv_dict["PtolemyField"] = (
+                        algebra.magma.parseDefiningRelationshipAbsolutizedAlgebraicClosure(
+                            varietyData))
+                except:
+                    error_condition = "Could not parse Field in Variety %d" % index_prime_ideal
+
                 try:
                     cvols = get_complex_volumes(t, N, c, prime_ideal, not_paranoid = not options.paranoid)
 

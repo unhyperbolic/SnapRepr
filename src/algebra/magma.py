@@ -12,6 +12,37 @@ def quote_string(s):
                 r += i[60*j:60*j+60] + '\\\\\\n'
     return r
 
+def absolutizeVariety(polys, term_order):
+    return (
+        ideal_to_magma(polys,term_order) +
+        'A:=AlgebraicClosure();\n'
+        'V:=Variety(I,A);\n'
+        'Absolutize(A);\n'
+        'print "FIELD=BEGINS=HERE";\n'
+        'A;\n'
+        'print "FIELD=ENDS=HERE";\n'
+        'print "VARIETY=BEGINS=HERE";\n'
+        'V;\n'
+        'print "VARIETY=ENDS=HERE";\n'
+        )
+
+def parseDefiningRelationshipAbsolutizedAlgebraicClosure(s_with_backslash):
+
+    s = re.search(
+        "FIELD=BEGINS=HERE\s*"
+        "[^\[]*\[\s*(.+)\s*\]\s*"
+        "FIELD=ENDS=HERE",
+        s_with_backslash, re.DOTALL)
+
+    if not s:
+        raise Exception, "No Field matched"
+
+    s_with_backslash = s.group(1)
+
+    s = processEndOfLineBackslashes(s_with_backslash)
+
+    return s.replace('r1', 'x').strip()
+
 
 def ideal_to_magma(polys, term_order):
     """
@@ -99,6 +130,16 @@ class PrimeIdeal(list):
             dimension = self.dimension,
             numberOfPoints = self.numberOfPoints)
             
+def processEndOfLineBackslashes(s_with_backslash):
+    s=""
+    for line in s_with_backslash.split('\n'):
+        line=line.strip()
+        if line and line[-1]=='\\':
+            line=line[0:-1]
+        else:
+            line=line+' '
+        s = s + line
+    return s
 
 def parse_primary_decomposition(s_with_backslash):
     """
@@ -131,14 +172,7 @@ def parse_primary_decomposition(s_with_backslash):
 
     s_with_backslash = s.group(2)
     
-    s=""
-    for line in s_with_backslash.split('\n'):
-        line=line.strip()
-        if line and line[-1]=='\\':
-            line=line[0:-1]
-        else:
-            line=line+' '
-        s = s + line
+    s = processEndOfLineBackslashes(s_with_backslash)
 
     components = re.findall(
         "Ideal of Polynomial ring.*?"
