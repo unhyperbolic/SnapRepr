@@ -83,6 +83,13 @@ def isGeometric(nameKeyedCensusTable, row):
 
 def processCsvFiles(files, table, nameKeyedCensusTable):
 
+    readHeaderFromFile = (len(files) == 1)
+
+    if readHeaderFromFile:
+        print "[Reading CSV header from files]"
+    else:
+        print "[Assuming default CSV header]"
+
     for csvFileName in files:
         
         if not '_linComb' in csvFileName:
@@ -93,12 +100,22 @@ def processCsvFiles(files, table, nameKeyedCensusTable):
                 csvOutFilename = csvFileName + '_linComb.csv'
 
             print csvFileName, "->", csvOutFilename
-
-            csvTable = csvUtilities.readCensusTable.readCensusTable(csvFileName, 
-                                                                    readHeaderFromFile = False)
+            
+            csvTable = (
+                csvUtilities.readCensusTable.readCensusTable(
+                    csvFileName,
+                    readHeaderFromFile = readHeaderFromFile))
   
+            fieldnames = csvTable.header
+
+            if readHeaderFromFile and not "LinearCombinations" in fieldnames:
+                fieldnames.append("LinearCombinations")
+
             csv_writer = csv.DictWriter(open(csvOutFilename,'w'),
-                                        fieldnames = csvTable.header)
+                                        fieldnames = fieldnames)
+
+            if readHeaderFromFile:
+                csv_writer.writerow(dict(zip(fieldnames, fieldnames)))
 
             for row in csvTable.listOfDicts:
                 if (row.has_key('Volume') and 
