@@ -1,0 +1,1 @@
+for i in cusped_8/t05???.trig; do SnapReprDehnFill.py $i NewDehnTmp2 7; for j in NewDehnTmp2/*.trig; do SnapReprSnapWrapperInvTraceFieldAndVolume.py $j >>NewDehnFillingst05.csv; rm $j; done; done
