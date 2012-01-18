@@ -52,6 +52,8 @@ def main():
         
     outFilename = outFilenameBase + '_complexPlaces.csv'
 
+    print "output to", outFilename
+
     censusTable = readCensusTable(filename, convertData = False)
 
     fieldnames = censusTable.header
