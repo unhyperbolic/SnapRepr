@@ -42,21 +42,26 @@ class CensusTable:
 
 def readCensusTable(csvFile,
                     sortKey = None,
-                    readHeaderFromFile = True):
+                    readHeaderFromFile = True,
+                    convertData = True):
 
     def convertDict(d):
-
-        global conversionDict
-
-        for k, v in d.items():
-            if conversionDict.has_key(k):
-                try:
-                    d[k] = conversionDict[k](v)
-                except:
-                    d[k] = None
-
         return d
+    
+    if convertData:
+        def convertDict(d):
 
+            global conversionDict
+
+            for k, v in d.items():
+                if conversionDict.has_key(k):
+                    try:
+                        d[k] = conversionDict[k](v)
+                    except:
+                        d[k] = None
+
+            return d
+        
     if isinstance(csvFile, str):
         csvFile = open(csvFile, 'rb')
 

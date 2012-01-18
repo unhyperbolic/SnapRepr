@@ -52,7 +52,7 @@ def main():
         
     outFilename = outFilenameBase + '_complexPlaces.csv'
 
-    censusTable = readCensusTable(filename)
+    censusTable = readCensusTable(filename, convertData = False)
 
     fieldnames = censusTable.header
     if not "NumberOfComplexPlaces" in fieldnames:
