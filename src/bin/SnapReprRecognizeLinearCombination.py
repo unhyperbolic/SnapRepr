@@ -109,7 +109,7 @@ def processCsvFiles(files, table, nameKeyedCensusTable):
             fieldnames = csvTable.header
 
             if readHeaderFromFile and not "LinearCombinations" in fieldnames:
-                fieldnames.append("LinearCombinations")
+                fieldnames = fieldnames + ["LinearCombinations"]
 
             csv_writer = csv.DictWriter(open(csvOutFilename,'w'),
                                         fieldnames = fieldnames)
