@@ -4,7 +4,7 @@ from utilities.basicAlgorithms import safeDictLookup
 from linearCombinations.multiple import Multiple
 
 def matchClosed(row):
-    match = re.match('[msvt]\d+\(-?\d+,-?\d+\)$', row['Name'])
+    match = re.match('[msvt]\d+(\(-?\d+,-?\d+\))+$', row['Name'])
 
     if not match:
         return None
