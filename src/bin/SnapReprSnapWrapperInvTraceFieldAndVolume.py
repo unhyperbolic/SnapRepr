@@ -98,7 +98,10 @@ def process_file(trig_file):
 
     
     if re.search(r"\(-?\d+,-?\d+\)", trig_file):
-        oc = "closed"
+        if "(0,0)" in trig_file: # manifold is cusped if there is an unfilled cusped
+            oc = "cusped"
+        else:
+            oc = "closed"
     else:
         oc = "cusped"
 
