@@ -1,9 +1,7 @@
 import numpy
 import math
 from algebra.polynomial import Polynomial, uncomparablePrintCoefficientMethod
-#from algebra.pari import roots_of_polynomial
-#from algebra.pari import random_complex_modulos
-#from algebra.pari import number
+from algebra import pari
 
 from fractions import Fraction
 
@@ -25,9 +23,43 @@ def _printPoly(p):
 def filterPoly(polys, skip):
     return [poly for poly in polys if not poly == skip]
 
-def solvePolynomialEquationsExactly(polys,
-                                    nf = None, 
-                                    variableDict = None):
+def exactSolutionsToNumerical(variableDict, nf, coeffConversion, polynomialSolver):
+    
+    if nf:
+        nfSolutions = polynomialSolver(nf.convertCoefficients(coeffConversion))
+    else:
+        nfSolutions = [coeffConversion(0)]
+
+    def computeVariableDict(nfSolution, variableDict = variableDict, coeffConversion = coeffConversion):
+        
+        substituteDict = {'x' : 
+                         Polynomial.constantPolynomial(nfSolution)}
+
+        def computeNumeric(p, substituteDict = substituteDict, coeffConversion = coeffConversion):
+            c = p.convertCoefficients(coeffConversion).substitute(substituteDict)
+            assert c.isConstant()
+            return c.getConstant()
+
+        return dict(
+            [(var, computeNumeric(val)) 
+             for var, val in variableDict.items()])
+
+    return [computeVariableDict(sol) for sol in nfSolutions]
+
+def solvePolynomialEquationsExactly(polys):
+
+    def conversionFunction(c):
+        return Polynomial.constantPolynomial(c)
+
+    polys = [poly.convertCoefficients(conversionFunction) for poly in polys]
+    
+    return _solvePolynomialEquationsExactly(polys,
+                                            nf = None, variableDict = {})
+
+def _solvePolynomialEquationsExactly(polys,
+                                     nf = None, 
+                                     variableDict = None):
+
 
     # nf is a polynomial in x encoding a number field
 
@@ -37,55 +69,122 @@ def solvePolynomialEquationsExactly(polys,
 
     # a : x + 2
 
-    if not variableDict:
-        variableDict = {}
+
 
     if not polys:
         return variableDict, nf
+
+    #print "=================== Enter _solvePolynomialEquationsExactly"
+
+    #if nf:
+    #    print "Number field: ", nf.printMagma()
+    
+    #print "Polynomials:"
+
+    #for i in polys:
+    #    print "         ", i.printMagma()
 
     univariatePolys = [poly for poly in polys if poly.isUnivariate()]
     linearPolys = [poly for poly in polys if poly.isLinear()]
 
     if linearPolys:
         linearPoly = linearPolys[0]
-
-        factor, constant = linearPoly.getCoefficients(Fraction)
         variable = linearPoly.variables()[0]
 
-        if not isinstance(constant, Polynomial):
-            constant = Polynomial.constantPolynomial(constant)
+        #print "Linear Poly", linearPoly.printMagma()
 
-        factor = Polynomial.constantPolynomial(-Fraction(1)/factor)
+        polys = filterPoly(polys, linearPoly)
 
-        variableDict[variable] = factor * constant
+        factor, constant = linearPoly.getCoefficients()
 
-        return solvePolynomialEquationsExactly(
-            filterPoly(polys, linearPoly),
-            nf,
-            variableDict)
+        assert isinstance(factor, Polynomial) 
+        assert factor.isConstant()
+        assert isinstance(constant, Polynomial)
+
+        factorRat = factor.getConstant()
+        invFactorRat = - Fraction(1,1) / factorRat
+        invFactor = Polynomial.constantPolynomial(invFactorRat)
+        variableValue = constant * invFactor
+
+        variableDict[variable] = variableValue
+        polys = [
+            poly.substitute(
+                {variable:Polynomial.constantPolynomial(variableValue)})
+            for poly in polys]
+        
+        return _solvePolynomialEquationsExactly(polys,
+                                                nf = nf,
+                                                variableDict = variableDict)
 
     if univariatePolys:
         univariatePoly = univariatePolys[0]
+
+        #print "Univariate polynomial", univariatePoly.printMagma()
+
+        polys = filterPoly(polys, univariatePoly)
+
         variable = univariatePoly.variables()[0]
 
         if not nf:
-            nf = univariatePoly.substitute({variable: Polynomial.fromVariableName('x')})
+
+            def toConstant(p):
+                assert p.isConstant()
+                return p.getConstant()
+
+            nfInVar = univariatePoly.convertCoefficients(toConstant)
+            nf = nfInVar.substitute(
+                {variable : Polynomial.fromVariableName('x')})
+
+            variableValue = Polynomial.fromVariableName('x')
+            variableDict[variable] = variableValue
+            
+            polys = [
+                poly.substitute(
+                    {variable:Polynomial.constantPolynomial(variableValue)})
+                for poly in polys]
+
+            return _solvePolynomialEquationsExactly(polys,
+                                                    nf = nf,
+                                                    variableDict = variableDict)
         else:
+            def toY(p):
+                return p.substitute({'x' : Polynomial.fromVariableName('y')})
 
-            univariatePoly = univariatePoly.subsitute({variable: Polynomial.fromVariableName('y')})
+            univariatePolyInY = univariatePoly.convertCoefficients(toY)
+            univariatePolyInXandY = univariatePolyInY.substitute({variable:Polynomial.constantPolynomial(Polynomial.fromVariableName('x'))})
+            nfInY = toY(nf)
+            
+            pariStr = "speresult = rnfequation(nfinit(%s),%s,1)" % (
+                nfInY, univariatePolyInXandY)
 
-            pariNf = nfinit(nf)
-            nf, transform = rnfequation(pariNf, univariatePoly)
+            #print pariStr
+            r = pari.pari_eval(pariStr)
+            #print r
+
+            newNf = Polynomial.parseFromMagma(pari.pari_eval("speresult[1]"))
+            oldX  = Polynomial.parseFromMagma(pari.pari_eval("speresult[2].pol"))
+            factor = int(pari.pari_eval("speresult[3]"))
+
+            newX = (Polynomial.fromVariableName('x')
+                    - Polynomial.constantPolynomial(factor) * oldX)
+
+            def transformToNewNf(p, oldX = oldX):
+                return p.substitute({'x':oldX})
 
             for k in variableDict.keys():
-                variableDict[k] = variableDict[k].substitute({'x' : transform})
+                variableDict[k] = transformToNewNf(variableDict[k])
 
-        variableDict[variable] = Polynomial.fromVariableName('x')
-            
-        return solvePolynomialEquationsExactly(
-            filterPoly(polys, univariatePoly),
-            nf,
-            variableDict)
+            variableDict[variable] = newX
+
+            polys = [
+                poly.convertCoefficients(transformToNewNf).substitute(
+                    {variable:Polynomial.constantPolynomial(newX)})
+                for poly in polys]
+
+            return _solvePolynomialEquationsExactly(
+                polys,
+                newNf,
+                variableDict)
 
     raise Exception, "Should never get here"
 

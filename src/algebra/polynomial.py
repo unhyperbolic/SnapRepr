@@ -29,6 +29,13 @@ def parseIntOrFraction(s):
     
     return parseIntCoefficient(s)
 
+def parenthesisCoefficientMethod(i):
+    if isinstance(i, int) or isinstance(i, Fraction):
+        return defaultPrintCoefficientMethod(i)
+
+    else:
+        return '+', '(%s)' % repr(i)
+
 def defaultPrintCoefficientMethod(i):
     try:
         sign = '+' if i >= 0 else '-'
@@ -94,6 +101,10 @@ class Monomial(object):
                 assert expo > 0
             self._vars = vars
 
+    def __repr__(self):
+        return "Monomial(%s, %s)" % (repr(self._coefficient),
+                                    repr(self._vars))
+
     def __str__(self):
         return self.printMagma()
 
@@ -144,7 +155,7 @@ class Monomial(object):
         
     # Multiply two monomials
     def __mul__(self, other):
-        
+
         assert isinstance(other, Monomial)
 
         # Compute coefficient
@@ -170,9 +181,6 @@ class Monomial(object):
         return (
             self._coefficient == other._coefficient and
             self._vars == other._vars)
-
-    def __repr__(self):
-        return "Monomial(%s, %s)" % (self._coefficient, self._vars)
 
     def convertCoefficient(self, conversionFunction):
         return Monomial(
@@ -293,7 +301,7 @@ class Polynomial(object):
         combinedMonomials = [
             Monomial(coefficient, vars)
             for vars, coefficient in orderedTupleOfVarsCoeffPairs
-            if not coefficient == 0]
+            if _coefficientIsNonTrivial(coefficient)]
 
         # convert to tuple
         self._monomials = tuple(combinedMonomials)
@@ -322,6 +330,8 @@ class Polynomial(object):
         assert other >= 0
         if other == 0:
             return Polynomial((Monomial.constantMonomial(1),))
+        if other == 1:
+            return self
         if other % 2 == 1:
             return self * (self ** (other-1))
         return (self * self) ** (other/2)
@@ -338,6 +348,9 @@ class Polynomial(object):
     def __str__(self):
         return self.printMagma()
 
+    def __repr__(self):
+        return "Polynomial(%s)" % repr(self._monomials)
+
     # print using magma printing conventions
     # a method to print the coefficients can be supplied
 
@@ -350,15 +363,13 @@ class Polynomial(object):
             return s[1:].lstrip()
         return s
 
-    def __repr__(self):
-        return "Polynomial(%s)" % repr(self._monomials)
-
     # convert all coefficients using conversionFunction
     def convertCoefficients(self, conversionFunction):
-        return Polynomial(
-            tuple([monomial.convertCoefficient(conversionFunction)
-                   for monomial in self._monomials]))
 
+        return Polynomial(tuple(
+                [monomial.convertCoefficient(conversionFunction)
+                 for monomial in self._monomials]))
+    
     # takes a dictionary variable name -> polynomial
     # replaces a variable by the corresponding polynomial
     def substitute(self, d):
@@ -366,15 +377,24 @@ class Polynomial(object):
         def substituteMonomial(monomial):
             vars = monomial.getVars()
             newVars = []
-            poly = Polynomial.constantPolynomial(1)
+            #poly = Polynomial.constantPolynomial(1)
+
+            for var, expo in vars:
+                if not d.has_key(var):
+                    newVars.append((var,expo))
+
+            poly = Polynomial((
+                    Monomial(monomial.getCoefficient(),
+                             tuple(newVars)),))
+
             for var, expo in vars:
                 if d.has_key(var):
                     poly = poly * (d[var] ** expo)
-                else:
-                    newVars.append((var,expo))
-            return poly * Polynomial((
-                Monomial(monomial.getCoefficient(),
-                          tuple(newVars)),))
+
+            return poly
+            #return poly * Polynomial((
+            #    Monomial(monomial.getCoefficient(),
+            #              tuple(newVars)),))
 
         return sum([substituteMonomial(monomial)
                      for monomial in self._monomials], Polynomial(()))
@@ -461,22 +481,32 @@ def _storageTypePolicy(typeA, typeB):
     if typeB == int:
         return typeA
 
-    assert typeA == typeB
+    if not typeA == typeB:
+
+        print typeA, typeB
+        raise Exception, "Bad _storageTypePolicy call"
 
     return typeA
 
 def _operatorTypePolicy(objA, objB, op = operator.add):
-    if type(objA) == type(objB):
-        return op(objA, objB)
-    if type(objA) == int:
-        return op(type(objB)(objA), objB)
-    if type(objB) == int:
-        return op(type(objA)(objB), objA)
 
-    print objA, objB
-    print type(objA), type(objB)
+    try:
+
+        if type(objA) == type(objB):
+            return op(objA, objB)
+        if type(objA) == int:
+            return op(type(objB)(objA), objB)
+        if type(objB) == int:
+            return op(type(objA)(objB), objA)
+
+        raise Exception
+
+    except:
+
+        print objA, objB
+        print type(objA), type(objB)
     
-    raise Exception, "In _operatoreTypePolicy, cannot apply operator"
+        raise Exception, "In _operatoreTypePolicy, cannot apply operator"
 
 ### Definitions of parsable operators and their precedence
 
@@ -499,6 +529,13 @@ def _applyOperator(op, l, r):
     return _operators[op](l,r)
 
 ### Helper functions for parsing
+
+def _coefficientIsNonTrivial(c):
+
+    if isinstance(c, Polynomial):
+        return c._monomials
+    
+    return not c == 0
 
 def _parseVariable(s):
     r = re.match(r'([_A-Za-z][_A-Za-z0-9]*)(.*)$',s)

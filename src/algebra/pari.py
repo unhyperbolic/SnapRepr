@@ -1,5 +1,9 @@
 import fractions
-from algebra.polynomial import uncomparablePrintCoefficientMethod
+from algebra.polynomial import uncomparablePrintCoefficientMethod, Polynomial
+from algebra import remotePari
+
+class TimeoutAlarm(Exception):
+    pass
 
 lib_err = False
 
@@ -15,19 +19,31 @@ class NumericalError(Exception):
     def __str__(self):
         return "NumericalError(val = %s) : %s" % (self.val, self.msg)
 
-def pari_eval(s):
+def pari_eval(s, timeout = None):
     assert isinstance(s, str), "pari_eval requires string, but got %s" % s
     if lib_err:
         raise Exception, "pari not available"
-    return _pari._pari_eval(s)
 
-def pari_eval_bool(s):
+    # execute directly if no timeout is given
+    if timeout is None:
+        return _pari._pari_eval(s)
+    else:
+        # otherwise execute remotely
+        return remotePari.remotePariEval(s, timeout)
+
+def pari_eval_bool(s, timeout = None):
     assert isinstance(s, str),\
         "pari_eval_bool requires string, but got %s" % s
-    result = pari_eval(s)
+    result = pari_eval(s, timeout)
     assert result in ("0","1"),\
         "expression in pari_eval_bool not boolean, argument was %s" % s
     return result == "1"
+
+def getReducedPolynomial(p, timeout = None):
+    assert isinstance(p, Polynomial)
+    
+    return Polynomial.parseFromMagma(
+        pari_eval("polredabs(%s)" % p.printMagma(), timeout))
 
 _precision = 0
 _error = 0

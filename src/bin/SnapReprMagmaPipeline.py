@@ -19,7 +19,8 @@ sys.path.append(base_path)
 try:
     from manifold.triangulation import triangulation, read_triangulation_from_file
     from algebra.polynomial import Polynomial
-    from algebra.solvePolynomialEquations import solvePolynomialEquations
+    from algebra.solvePolynomialEquations import solvePolynomialEquations, solvePolynomialEquationsExactly, exactSolutionsToNumerical
+    from utilities.solutionCheck import solutionCheck
     import algebra.mpmathFunctions
     import manifold.slN
     import algebra.magma
@@ -28,6 +29,7 @@ try:
     import globalsettings
     from algebra.exceptions import NumericalError
     import utilities.printNumbers
+    from algebra import pari
     from csvUtilities import readCensusTable
 except ImportError as e:
     print e
@@ -86,7 +88,7 @@ def main():
         # we replace those line breaks
         magma_out = ''.join([x.strip() for x in input_file.split('\\\n')])
 
-        if "MAGMA=OUTPUT=STAGE2=FOR=SNAPREPR" in input_file:
+        if True or "MAGMA=OUTPUT=STAGE2=FOR=SNAPREPR" in input_file:
 
             process_magma_output_headers_stage2(options, magma_out, 
                                                 magma_filename = args[0])
@@ -259,18 +261,18 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
 
     csvOutputFilenameBase = magma_filename
 
-    if magma_filename[-6:] == '.magmi':
+    if magma_filename[-6:] == '.magma':
         csvOutputFilenameBase = magma_filename[:-6]
-    if magma_filename[-10:] == '.magmi_out':
+    if magma_filename[-10:] == '.magma_out':
         csvOutputFilenameBase = magma_filename[:-10]
-    csvOutputFileName = csvOutputFilenameBase + '_magmi.csv'
+    csvOutputFileName = csvOutputFilenameBase + '_magma.csv'
 
     sys.stderr.write("Output File: %s\n" % csvOutputFileName)
 
     csv_writer = csv.DictWriter(output, 
                                 fieldnames = readCensusTable.header,
                                 restval = "")
-    csv_dict = { "File": magma_filename}
+    csv_dict = { "File": magma_filename }
 
     # parse the header we produced to recover N, cohomology obstruction class,
     # name of the triangulation, triangulation data, cputime
@@ -377,7 +379,28 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
                     error_condition = "Could not parse Field in Variety %d" % index_prime_ideal
 
                 try:
-                    cvols = get_complex_volumes(t, N, c, prime_ideal, not_paranoid = not options.paranoid)
+                    cvols, nf = get_complex_volumes(t, N, c, prime_ideal, not_paranoid = not options.paranoid)
+
+                    nfStr = 'Q'
+                    nfStrReduced = 'Q'
+
+                    if nf:
+                        nfStr = nf.printMagma()
+                        try:
+                            nfReduced = pari.getReducedPolynomial(
+                                nf, timeout = 45)
+                            nfStrReduced = nfReduced.printMagma()
+
+                        except pari.TimeoutAlarm:
+                            nfStrReduced = "timeout"
+
+                    if len(nfStr) > 500:
+                        nfStr = '...'
+                    if len(nfStrReduced) > 500:
+                        nfStrReduced = '...'
+
+                    csv_dict["Ptolemy Field"] = nfStr
+                    csv_dict["Ptolemy Field reduced"] = nfStrReduced
 
                     for i, cvol in basicAlgorithms.indexedIterable(cvols):
                         csv_dict["Index Solution"] = i
@@ -414,6 +437,21 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
     # in Groebner basis
     sys.stderr.write("Solving...\n")
 
+    try:
+        solution, nf = solvePolynomialEquationsExactly(primeIdeal)
+    except Exception as e:
+        print e
+
+    nfDegree = 1
+    if nf:
+        nfDegree = nf.degree()
+
+    if not nfDegree == primeIdeal.numberOfPoints:
+        raise NumericalError("Number of solutions doesn't match")
+
+    if nf:
+        print "Number field", nf.printMagma()
+
     def conversionFunction(c):
         if isinstance(c, Fraction):
             return mpmath.mpc(c.numerator) / mpmath.mpc(c.denominator)
@@ -421,10 +459,17 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
             return mpmath.mpc(c)
 
     primeIdealFloatCoeff = primeIdeal.convertCoefficients(conversionFunction)
-    solutions = solvePolynomialEquations(
+    solutions_old = solvePolynomialEquations(
         primeIdealFloatCoeff,
         polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
     sys.stderr.write("Solved...\n")
+
+    solutions = exactSolutionsToNumerical(
+        solution, nf,
+        coeffConversion = conversionFunction,
+        polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
+
+    solutionCheck(solutions_old, solutions)
 
     # Solutions is a list with one element per Galois conjugate
     if not len(solutions) == primeIdeal.numberOfPoints:
@@ -490,7 +535,7 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
             raise NumericalError(val = [vol, cvol], 
                                  msg = "Vol and Complex Vol not matching")
         all_cvols.append(cvol)
-    return all_cvols
+    return all_cvols, nf
 
 #            sys.stderr.write(
 #                "Irreducible component of variety No %d is of dimension %d\n" 
@@ -559,7 +604,7 @@ def create_parser():
                       help = "Maximal error in decimal digits")
     parser.add_option("-P", "--extra-digits",
                       type = "int",
-                      dest = "extraDigits", default = 20,
+                      dest = "extraDigits", default = 30,
                       help = "Digits of precision in intermediate calculation")
     parser.add_option("-e", "--exact",
                       dest = "exact", default = False,
