@@ -479,9 +479,9 @@ def _storageTypePolicy(typeA, typeB):
     assert isinstance(typeA, type)
     assert isinstance(typeB, type)
     
-    if typeA == int:
+    if typeA in [int, long]:
         return typeB
-    if typeB == int:
+    if typeB in [int, long]:
         return typeA
 
     if not typeA == typeB:
@@ -497,9 +497,9 @@ def _operatorTypePolicy(objA, objB, op = operator.add):
 
         if type(objA) == type(objB):
             return op(objA, objB)
-        if type(objA) == int:
+        if type(objA) in [int, long]:
             return op(type(objB)(objA), objB)
-        if type(objB) == int:
+        if type(objB) in [int, long]:
             return op(type(objA)(objB), objA)
 
         raise Exception
