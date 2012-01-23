@@ -28,18 +28,14 @@ def main():
     
     while True:
         inputStr = sys.stdin.readline()
-
-        sys.stderr.write("got a line")
-
         if not inputStr:
             break
         inputStr = inputStr.strip()
         inputRaw = eval(inputStr)
+
         outputRaw = pari.pari_eval(inputRaw)
+
         print repr(outputRaw)
-
         sys.stdout.flush()
-
-        sys.stderr.write("printing a line")
 
 main()
