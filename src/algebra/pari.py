@@ -12,6 +12,9 @@ try:
 except:
     lib_err = True
 
+class PariError(Exception):
+    pass
+
 class NumericalError(Exception):
     def __init__(self, val, msg):
         self.val = val

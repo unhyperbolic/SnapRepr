@@ -394,6 +394,9 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
                         except pari.TimeoutAlarm:
                             nfStrReduced = "timeout"
 
+                        except pari.PariError:
+                            nfStrReduced = "pari failed"
+
                     if len(nfStr) > 500:
                         nfStr = '...'
                     if len(nfStrReduced) > 500:
@@ -435,12 +438,14 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
     # Find the points in the variety
     # solvePolynomialEquations assumes that prime_ideal is given
     # in Groebner basis
-    sys.stderr.write("Solving...\n")
+    sys.stderr.write("Solving exactly...\n")
 
     try:
         solution, nf = solvePolynomialEquationsExactly(primeIdeal)
     except Exception as e:
         print e
+
+    sys.stderr.write("Solved exactly\n")
 
     nfDegree = 1
     if nf:
@@ -458,16 +463,23 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
         else:
             return mpmath.mpc(c)
 
+    sys.stderr.write("Solving numerically the old way...\n")
+
     primeIdealFloatCoeff = primeIdeal.convertCoefficients(conversionFunction)
     solutions_old = solvePolynomialEquations(
         primeIdealFloatCoeff,
         polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
-    sys.stderr.write("Solved...\n")
+
+    sys.stderr.write("Solved numerically the old way\n")
+
+    sys.stderr.write("Solving numerically the new way...\n")
 
     solutions = exactSolutionsToNumerical(
         solution, nf,
         coeffConversion = conversionFunction,
         polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
+
+    sys.stderr.write("Solved numerically the new way...\n")
 
     solutionCheck(solutions_old, solutions)
 
@@ -604,7 +616,7 @@ def create_parser():
                       help = "Maximal error in decimal digits")
     parser.add_option("-P", "--extra-digits",
                       type = "int",
-                      dest = "extraDigits", default = 30,
+                      dest = "extraDigits", default = 40,
                       help = "Digits of precision in intermediate calculation")
     parser.add_option("-e", "--exact",
                       dest = "exact", default = False,

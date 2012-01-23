@@ -52,6 +52,9 @@ def remotePariEval(s, timeout = 60):
     pariProcess.stdin.flush()
     pariProcess.stdout.flush()
     resultStr = pariProcess.stdout.readline().strip()
+    if not resultStr:
+        from algebra import pari
+        raise pari.PariError
     result = eval(resultStr)
     signal.alarm(0) # reset alarm
     return result

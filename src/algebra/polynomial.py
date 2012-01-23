@@ -439,6 +439,9 @@ class Polynomial(object):
         else:
             return 0
 
+    def isMonic(self):
+        return self.leadingCoefficient() == 1
+
     # get coefficients in descending order of a univariate polynomial
     def getCoefficients(self, conversionFunction = lambda x:x):
         assert self.isUnivariate()
