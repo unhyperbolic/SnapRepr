@@ -8,6 +8,24 @@ from algebra.pari import *
 import globalsettings
 import mpmath
 
+def mpmathDilog(z):
+    return mpmath.polylog(2,z)
+
+def pariDilog(z):
+    assert isinstance(z, mpmath.mpc)
+
+    pariStr = 'myDilog = dilog((%s) + (%s) * I)' % (
+        mpmath.nstr(z.real, mpmath.mp.dps),
+        mpmath.nstr(z.imag, mpmath.mp.dps))
+
+    pari_eval(pariStr)
+    
+    return mpmath.mpc(
+        pari_eval('real(myDilog)').replace(' E','E'),
+        pari_eval('imag(myDilog)').replace(' E','E'))
+
+myDilog = pariDilog
+
 class DegenerateSimplexException(Exception):
     pass
     
@@ -164,7 +182,7 @@ class zpq_triple:
         PiI = mpmath.pi * 1j
 
         val= (
-              mpmath.polylog(2,z)
+              myDilog(z)
             + (mpmath.log(z) + p * PiI) * ( mpmath.log(1 - z) + q * PiI) / 2
             - mpmath.pi ** 2 / 6)
 
@@ -176,7 +194,7 @@ class zpq_triple:
     def volume(self):
         z = self.z
         val = (  mpmath.arg(1 - z) * mpmath.log(abs(z))
-               + mpmath.polylog(2,z).imag)
+               + myDilog(z).imag)
         if self.sign == -1:
             return -val
         else:

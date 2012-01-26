@@ -6,6 +6,7 @@ import optparse
 import traceback
 import StringIO
 import csv
+import traceback
 
 from fractions import Fraction
 
@@ -50,6 +51,7 @@ def main():
                               options.maximalError)
 
     mpmath.mp.dps = options.maximalError + options.extraDigits
+    pari.set_pari_precision(options.maximalError + options.extraDigits)
 
     # Exit writing the header for the CSV file
     if options.print_csv_header:
@@ -379,12 +381,19 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
                     error_condition = "Could not parse Field in Variety %d" % index_prime_ideal
 
                 try:
+                    csv_dict["Ptolemy Field"] = ""
+                    csv_dict["Ptolemy Field reduced"] = ""
+                    
                     cvols, nf = get_complex_volumes(t, N, c, prime_ideal, not_paranoid = not options.paranoid)
 
                     nfStr = 'Q'
                     nfStrReduced = 'Q'
 
-                    if nf:
+                    if isinstance(nf, str):
+                        nfStr = nf
+                        nfStrReduced = ""
+
+                    elif nf:
                         nfStr = nf.printMagma()
                         try:
                             nfReduced = pari.getReducedPolynomial(
@@ -433,29 +442,13 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
 
 def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
 
-    all_cvols = []
-
     # Find the points in the variety
     # solvePolynomialEquations assumes that prime_ideal is given
     # in Groebner basis
-    sys.stderr.write("Solving exactly...\n")
 
-    try:
-        solution, nf = solvePolynomialEquationsExactly(primeIdeal)
-    except Exception as e:
-        print e
+    all_cvols = []
 
-    sys.stderr.write("Solved exactly\n")
-
-    nfDegree = 1
-    if nf:
-        nfDegree = nf.degree()
-
-    if not nfDegree == primeIdeal.numberOfPoints:
-        raise NumericalError("Number of solutions doesn't match")
-
-    if nf:
-        print "Number field", nf.printMagma()
+    sys.stderr.write("Solving numerically the old way...\n")
 
     def conversionFunction(c):
         if isinstance(c, Fraction):
@@ -463,29 +456,57 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
         else:
             return mpmath.mpc(c)
 
-    sys.stderr.write("Solving numerically the old way...\n")
-
     primeIdealFloatCoeff = primeIdeal.convertCoefficients(conversionFunction)
-    solutions_old = solvePolynomialEquations(
+    solutions = solvePolynomialEquations(
         primeIdealFloatCoeff,
         polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
-
-    sys.stderr.write("Solved numerically the old way\n")
-
-    sys.stderr.write("Solving numerically the new way...\n")
-
-    solutions = exactSolutionsToNumerical(
-        solution, nf,
-        coeffConversion = conversionFunction,
-        polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
-
-    sys.stderr.write("Solved numerically the new way...\n")
-
-    solutionCheck(solutions_old, solutions)
 
     # Solutions is a list with one element per Galois conjugate
     if not len(solutions) == primeIdeal.numberOfPoints:
         raise NumericalError("Number of solutions doesn't match")
+
+    sys.stderr.write("Solved numerically the old way\n")
+
+    # make Nf contain the error message !
+
+    try:
+        sys.stderr.write("Solving exactly...\n")
+        solution, nf = solvePolynomialEquationsExactly(primeIdeal)
+        sys.stderr.write("Solved exactly\n")
+
+        nfDegree = 1
+        if nf:
+            nfDegree = nf.degree()
+
+        if not nfDegree == primeIdeal.numberOfPoints:
+            print nf, nfDegree, primeIdeal.numberOfPoints
+            raise Exception, "points not matching"
+
+        if nf:
+            print "Number field", nf.printMagma()
+
+        sys.stderr.write("Solving numerically the new way...\n")
+
+        solutionsNew = exactSolutionsToNumerical(
+            solution, nf,
+            coeffConversion = conversionFunction,
+            polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
+
+        sys.stderr.write("Solved numerically the new way...\n")
+
+        sys.stderr.write("Checking against other solutions...\n")
+
+        try:
+            solutionCheck(solutionsNew, solutions)
+        except:
+            nf = "Error: Solutions not matching"
+
+    except pari.TimeoutAlarm:
+        nf = "Error: Timeout"
+
+    except Exception as e: 
+        print e
+        nf = "Error: unknown"
 
     id_c_parms = manifold.slN.get_identified_c_parameters(t, N)
     if N % 2 == 0:

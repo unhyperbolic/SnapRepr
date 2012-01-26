@@ -70,7 +70,8 @@ def set_pari_precision(precision):
     assert isinstance(precision, int) and precision > 9,\
         "set_pari_precision needs integer at least 10"
 
-    pari_eval("default(realprecision,%d)" % precision)
+    if not lib_err:
+        pari_eval("default(realprecision,%d)" % precision)
 
     _precision = precision
 

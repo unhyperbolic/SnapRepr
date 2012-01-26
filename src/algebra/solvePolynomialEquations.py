@@ -91,40 +91,47 @@ def _solveExactlyOverNumberField(univariatePoly, nf):
     def convertXtoY(p):
         return p.substitute({'x' : Polynomial.fromVariableName('y')})
 
-    nf = convertXtoY(nf)
     univariatePoly = univariatePoly.convertCoefficients(convertXtoY)
     univariatePoly = univariatePoly.substitute(
         { variable : Polynomial.constantPolynomial(
             Polynomial.fromVariableName('x'))})
 
-    pariStr = "PRIAVTEsEONF = rnfequation(nfinit(%s), %s, 1)" % (
-        nf, univariatePoly)
+    if not nf:
+        assert univariatePoly.isConstant()
+        newSolution       = Polynomial.fromVariableName('x')
+        newNf             = univariatePoly.getConstant()
+        newExpressionForX = Polynomial.constantPolynomial(0)
+    else:
+        nf = convertXtoY(nf)
 
-    print pariStr
-    r = pari.pari_eval(pariStr)
-    # print r
+        pariStr = "PRIAVTEsEONF = rnfequation(nfinit(%s), %s, 1)" % (
+            nf, univariatePoly)
 
-    newNf              = Polynomial.parseFromMagma(pari.pari_eval(
-        "PRIAVTEsEONF[1]"))
-    newExpressionForX  = Polynomial.parseFromMagma(pari.pari_eval(
-        "PRIAVTEsEONF[2].pol"))
-    factor             = int(pari.pari_eval(
-        "PRIAVTEsEONF[3]"))
-    newSolution = (
-        Polynomial.fromVariableName('x')
-        - Polynomial.constantPolynomial(factor) * newExpressionForX)
+        print pariStr
+        r = pari.pari_eval(pariStr, timeout = 30)
+        # print r
+
+        newNf              = Polynomial.parseFromMagma(pari.pari_eval(
+                "PRIAVTEsEONF[1]", timeout = 30))
+        newExpressionForX  = Polynomial.parseFromMagma(pari.pari_eval(
+                "PRIAVTEsEONF[2].pol", timeout = 30))
+        factor             = int(pari.pari_eval(
+                "PRIAVTEsEONF[3]", timeout = 30))
+        newSolution = (
+            Polynomial.fromVariableName('x')
+            - Polynomial.constantPolynomial(factor) * newExpressionForX)
 
     return newSolution, newNf, newExpressionForX
 
-def _convertToNonMonicNf(nf):
+def _convertToMonicNf(nf):
 
-    pariStr = "PRIVATEconvertToNonMonicNf = nfinit(%s, 3)" % nf.printMagma()
+    pariStr = "PRIVATEconvertToMonicNf = nfinit(%s, 3)" % nf.printMagma()
     print pariStr
-    r       = pari.pari_eval(pariStr)
+    r       = pari.pari_eval(pariStr, timeout = 30)
     nf      = Polynomial.parseFromMagma(
-        pari.pari_eval("PRIVATEconvertToNonMonicNf[1].pol"))
+        pari.pari_eval("PRIVATEconvertToMonicNf[1].pol", timeout = 30))
     newExpressionForX = Polynomial.parseFromMagma(
-        pari.pari_eval("PRIVATEconvertToNonMonicNf[2].pol"))
+        pari.pari_eval("PRIVATEconvertToMonicNf[2].pol", timeout = 30))
 
     return nf, newExpressionForX
 
@@ -156,7 +163,7 @@ def _solvePolynomialEquationsExactlyHandleLinear(
 def _solvePolynomialEquationsExactlyHandleNonMonicNf(
         polys, nf, variableDict):
 
-    nf, newExpressionForX = _convertToNonMonicNf(nf)
+    nf, newExpressionForX = _convertToMonicNf(nf)
 
     return _solvePolynomialEquationsExactly(
         polys = _transformCoefficientsOfPolynomials(
@@ -173,7 +180,7 @@ def _solvePolynomialEquationsExactlyHandleUnivariate(
         nf, variableDict):
 
     newSolution, newNf, newExpressionForX = _solveExactlyOverNumberField(
-        univariatePoly, nf)
+            univariatePoly, nf)
     
     variableDict = _transformVariableDict(
         variableDict,
@@ -235,8 +242,9 @@ def _solvePolynomialEquationsExactly(polys,
             return _solvePolynomialEquationsExactlyHandleNonMonicNf(
                 polys, nf, variableDict)
         
-        if not nf:
-            nf = Polynomial.fromVariableName('x') - Polynomial.constantPolynomial(1)
+        #if not nf:
+        #    nf = (  Polynomial.fromVariableName('x') 
+        #          - Polynomial.constantPolynomial(1))
             
         univariatePoly = univariatePolys[0]
 
