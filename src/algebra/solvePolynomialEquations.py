@@ -68,21 +68,26 @@ def solvePolynomialEquationsExactly(polys):
     return _solvePolynomialEquationsExactly(polys,
                                             nf = None, variableDict = {})
 
-def _transformVariableDict(variableDict, newExpressionForX):
-    return dict( [(k, v.substitute( {'x': newExpressionForX}))
+def _transformVariableDict(variableDict, newExpressionForX, nf):
+    return dict( [(k, v.substitute( {'x': newExpressionForX}) % nf)
                    for k, v in variableDict.items()] )
 
-def _transformCoefficientsOfPolynomials(polys, newExpressionForX):
+def _transformCoefficientsOfPolynomials(polys, newExpressionForX, nf):
     def substitute(p, newExpressionForX = newExpressionForX):
-        return p.substitute( {'x': newExpressionForX} )
+        return p.substitute( {'x': newExpressionForX} ) % nf
     return [ poly.convertCoefficients(substitute)
              for poly in polys]
 
-def _setValueInPolynomials(polys, variable, value):
-    return [
+def _setValueInPolynomials(polys, variable, value, nf = None):
+    res = [
         poly.substitute(
             {variable:Polynomial.constantPolynomial(value)})
         for poly in polys]
+
+    if nf:
+        res = [poly.convertCoefficients(lambda x: x % nf) for poly in res]
+
+    return res
 
 def _solveExactlyOverNumberField(univariatePoly, nf):
     
@@ -168,11 +173,13 @@ def _solvePolynomialEquationsExactlyHandleNonMonicNf(
     return _solvePolynomialEquationsExactly(
         polys = _transformCoefficientsOfPolynomials(
             polys,
-            newExpressionForX = newExpressionForX),
+            newExpressionForX = newExpressionForX,
+            nf = nf),
         nf = nf,    
         variableDict = _transformVariableDict(
             variableDict,
-            newExpressionForX = newExpressionForX))
+            newExpressionForX = newExpressionForX,
+            nf = nf))
             
 def _solvePolynomialEquationsExactlyHandleUnivariate(
         polys,
@@ -184,20 +191,32 @@ def _solvePolynomialEquationsExactlyHandleUnivariate(
     
     variableDict = _transformVariableDict(
         variableDict,
-        newExpressionForX = newExpressionForX)
+        newExpressionForX = newExpressionForX,
+        nf = newNf)
     
     polys = _transformCoefficientsOfPolynomials(
         polys,
-        newExpressionForX = newExpressionForX)
+        newExpressionForX = newExpressionForX,
+        nf = newNf)
     
     variableDict[variable] = newSolution
-    polys = _setValueInPolynomials(polys, variable, newSolution)
+    polys = _setValueInPolynomials(polys, variable, newSolution, 
+                                   nf = newNf)
     
     return _solvePolynomialEquationsExactly(
         polys,
         newNf,
         variableDict)
     
+def _hasIntegralCoefficients(poly):
+    coeffs = poly.getCoefficients()
+    for coeff in coeffs:
+        if not isinstance(coeff, int):
+            assert isinstance(coeff, Fraction)
+            if not coeff.denominator == 1:
+                return False
+    return True
+
 def _solvePolynomialEquationsExactly(polys,
                                      nf = None, 
                                      variableDict = None):
@@ -238,7 +257,7 @@ def _solvePolynomialEquationsExactly(polys,
     univariatePolys = [poly for poly in polys if poly.isUnivariate()]
     if univariatePolys:
 
-        if nf and not nf.isMonic():
+        if nf and not (nf.isMonic() and _hasIntegralCoefficients(nf)):
             return _solvePolynomialEquationsExactlyHandleNonMonicNf(
                 polys, nf, variableDict)
         

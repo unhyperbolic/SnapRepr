@@ -345,6 +345,33 @@ class Polynomial(object):
                 
         return Polynomial(tuple(monomials))
 
+    def __mod__(self, other):
+        
+#        print "mod", str(self), str(other)
+
+        assert isinstance(other, Polynomial)
+        assert self.isUnivariate()
+        assert other.isUnivariate()
+        self.coefficientType(Fraction)
+        other = other.convertCoefficients(Fraction)
+        other = other * Polynomial.constantPolynomial(
+            Fraction(1,1) / other.leadingCoefficient())
+
+        variable = other.variables()[0]
+        assert ((not other.variables()) 
+                or other.variables()[0] == variable)
+
+        rest = self
+        while rest.degree() >= other.degree():
+            degreeDiff = rest.degree() - other.degree()
+            leadingCoeff = rest.leadingCoefficient()
+            rest = rest - (
+                Polynomial.constantPolynomial(leadingCoeff)
+                * Polynomial.fromVariableName(variable) ** degreeDiff
+                * other)
+
+        return rest
+        
     def __str__(self):
         return self.printMagma()
 

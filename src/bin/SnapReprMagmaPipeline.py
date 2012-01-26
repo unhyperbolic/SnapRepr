@@ -472,7 +472,7 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
     try:
         sys.stderr.write("Solving exactly...\n")
         solution, nf = solvePolynomialEquationsExactly(primeIdeal)
-        sys.stderr.write("Solved exactly\n")
+        sys.stderr.write("Solved exactly.\n")
 
         nfDegree = 1
         if nf:
@@ -492,12 +492,14 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
             coeffConversion = conversionFunction,
             polynomialSolver = algebra.mpmathFunctions.PolynomialSolver)
 
-        sys.stderr.write("Solved numerically the new way...\n")
+        sys.stderr.write("Solved numerically the new way.\n")
 
         sys.stderr.write("Checking against other solutions...\n")
 
         try:
             solutionCheck(solutionsNew, solutions)
+
+            sys.stderr.write("Checked against other solution.\n")
         except:
             nf = "Error: Solutions not matching"
 
