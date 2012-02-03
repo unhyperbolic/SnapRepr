@@ -58,7 +58,7 @@ def exactSolutionsToNumerical(
 
     return [computeVariableDict(sol) for sol in nfSolutions]
 
-def solvePolynomialEquationsExactly(polys):
+def solvePolynomialEquationsExactly(polys, timeout = None):
 
     def conversionFunction(c):
         return Polynomial.constantPolynomial(c)
@@ -66,7 +66,8 @@ def solvePolynomialEquationsExactly(polys):
     polys = [ poly.convertCoefficients(conversionFunction) for poly in polys ]
     
     return _solvePolynomialEquationsExactly(polys,
-                                            nf = None, variableDict = {})
+                                            nf = None, variableDict = {},
+                                            timeout = timeout)
 
 def _transformVariableDict(variableDict, newExpressionForX, nf):
     return dict( [(k, v.substitute( {'x': newExpressionForX}) % nf)
@@ -89,7 +90,7 @@ def _setValueInPolynomials(polys, variable, value, nf = None):
 
     return res
 
-def _solveExactlyOverNumberField(univariatePoly, nf):
+def _solveExactlyOverNumberField(univariatePoly, nf, timeout):
     
     variable = univariatePoly.variables()[0]
 
@@ -113,30 +114,32 @@ def _solveExactlyOverNumberField(univariatePoly, nf):
             nf, univariatePoly)
 
         print pariStr
-        r = pari.pari_eval(pariStr, timeout = 30)
+        print timeout
+        r = pari.pari_eval(pariStr, timeout = timeout)
         # print r
 
         newNf              = Polynomial.parseFromMagma(pari.pari_eval(
-                "PRIAVTEsEONF[1]", timeout = 30))
+                "PRIAVTEsEONF[1]", timeout = timeout))
         newExpressionForX  = Polynomial.parseFromMagma(pari.pari_eval(
-                "PRIAVTEsEONF[2].pol", timeout = 30))
+                "PRIAVTEsEONF[2].pol", timeout = timeout))
         factor             = int(pari.pari_eval(
-                "PRIAVTEsEONF[3]", timeout = 30))
+                "PRIAVTEsEONF[3]", timeout = timeout))
         newSolution = (
             Polynomial.fromVariableName('x')
             - Polynomial.constantPolynomial(factor) * newExpressionForX)
 
     return newSolution, newNf, newExpressionForX
 
-def _convertToMonicNf(nf):
+def _convertToMonicNf(nf, timeout):
 
     pariStr = "PRIVATEconvertToMonicNf = nfinit(%s, 3)" % nf.printMagma()
     print pariStr
-    r       = pari.pari_eval(pariStr, timeout = 30)
+    print timeout
+    r       = pari.pari_eval(pariStr, timeout = timeout)
     nf      = Polynomial.parseFromMagma(
-        pari.pari_eval("PRIVATEconvertToMonicNf[1].pol", timeout = 30))
+        pari.pari_eval("PRIVATEconvertToMonicNf[1].pol", timeout = timeout))
     newExpressionForX = Polynomial.parseFromMagma(
-        pari.pari_eval("PRIVATEconvertToMonicNf[2].pol", timeout = 30))
+        pari.pari_eval("PRIVATEconvertToMonicNf[2].pol", timeout = timeout))
 
     return nf, newExpressionForX
 
@@ -149,7 +152,8 @@ def _inverseOfConstantPolynomial(p):
 def _solvePolynomialEquationsExactlyHandleLinear(
         polys,
         linearPoly, variable,
-        nf, variableDict):
+        nf, variableDict,
+        timeout):
     
     factor, constant = linearPoly.getCoefficients()
 
@@ -163,12 +167,14 @@ def _solvePolynomialEquationsExactlyHandleLinear(
     return _solvePolynomialEquationsExactly(
         polys = _setValueInPolynomials(polys, variable, newSolution),
         nf = nf,
-        variableDict = variableDict)
+        variableDict = variableDict,
+        timeout = timeout)
 
 def _solvePolynomialEquationsExactlyHandleNonMonicNf(
-        polys, nf, variableDict):
+        polys, nf, variableDict,
+        timeout):
 
-    nf, newExpressionForX = _convertToMonicNf(nf)
+    nf, newExpressionForX = _convertToMonicNf(nf, timeout = timeout)
 
     return _solvePolynomialEquationsExactly(
         polys = _transformCoefficientsOfPolynomials(
@@ -179,15 +185,17 @@ def _solvePolynomialEquationsExactlyHandleNonMonicNf(
         variableDict = _transformVariableDict(
             variableDict,
             newExpressionForX = newExpressionForX,
-            nf = nf))
+            nf = nf),
+        timeout = timeout)
             
 def _solvePolynomialEquationsExactlyHandleUnivariate(
         polys,
         univariatePoly, variable,
-        nf, variableDict):
+        nf, variableDict,
+        timeout):
 
     newSolution, newNf, newExpressionForX = _solveExactlyOverNumberField(
-            univariatePoly, nf)
+            univariatePoly, nf, timeout = timeout)
     
     variableDict = _transformVariableDict(
         variableDict,
@@ -206,7 +214,8 @@ def _solvePolynomialEquationsExactlyHandleUnivariate(
     return _solvePolynomialEquationsExactly(
         polys,
         newNf,
-        variableDict)
+        variableDict,
+        timeout = timeout)
     
 def _hasIntegralCoefficients(poly):
     coeffs = poly.getCoefficients()
@@ -219,7 +228,8 @@ def _hasIntegralCoefficients(poly):
 
 def _solvePolynomialEquationsExactly(polys,
                                      nf = None, 
-                                     variableDict = None):
+                                     variableDict = None,
+                                     timeout = None):
 
 
     # nf is a polynomial in x encoding a number field
@@ -252,14 +262,15 @@ def _solvePolynomialEquationsExactly(polys,
             linearPoly = linearPoly,
             variable = linearPoly.variables()[0],
             nf = nf,
-            variableDict = variableDict)
+            variableDict = variableDict,
+            timeout = timeout)
 
     univariatePolys = [poly for poly in polys if poly.isUnivariate()]
     if univariatePolys:
 
         if nf and not (nf.isMonic() and _hasIntegralCoefficients(nf)):
             return _solvePolynomialEquationsExactlyHandleNonMonicNf(
-                polys, nf, variableDict)
+                polys, nf, variableDict, timeout = timeout)
         
         #if not nf:
         #    nf = (  Polynomial.fromVariableName('x') 
@@ -272,7 +283,8 @@ def _solvePolynomialEquationsExactly(polys,
             univariatePoly = univariatePoly,
             variable = univariatePoly.variables()[0],
             nf = nf,
-            variableDict = variableDict)
+            variableDict = variableDict,
+            timeout = timeout)
 
     raise Exception, "Should never get here"
 

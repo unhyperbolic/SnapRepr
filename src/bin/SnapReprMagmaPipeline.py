@@ -7,6 +7,7 @@ import traceback
 import StringIO
 import csv
 import traceback
+import threading
 
 from fractions import Fraction
 
@@ -397,7 +398,7 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
                         nfStr = nf.printMagma()
                         try:
                             nfReduced = pari.getReducedPolynomial(
-                                nf, timeout = 45)
+                                nf, timeout = 42)
                             nfStrReduced = nfReduced.printMagma()
 
                         except pari.TimeoutAlarm:
@@ -470,9 +471,37 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
     # make Nf contain the error message !
 
     try:
+        class SolverThread(threading.Thread):
+            def __init__(self, ideal):
+                threading.Thread.__init__(self)
+                self.ideal = ideal
+                self.solution = None
+                self.nf = None
+                self.event = threading.Event()
+                self.done = False
+            def run(self):
+                try:
+                    self.solution, self.nf = (
+                        solvePolynomialEquationsExactly(self.ideal, timeout = "process"))
+                    self.done = True
+                except:
+                    pass
+                self.event.set()
+
         sys.stderr.write("Solving exactly...\n")
-        solution, nf = solvePolynomialEquationsExactly(primeIdeal)
+
+        thread = SolverThread(primeIdeal)
+        thread.start()
+
+        if not thread.event.wait(1200.0):
+            thread._Thread__stop()
+            raise pari.TimeoutAlarm
+
+        if not thread.done:
+            raise pari.PariError
+
         sys.stderr.write("Solved exactly.\n")
+        solution, nf = thread.solution, thread.nf
 
         nfDegree = 1
         if nf:

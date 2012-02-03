@@ -45,8 +45,9 @@ def remotePariEval(s, timeout = 60):
     # get a working pari process
     pariProcess = _getPariProcess()
 
-    signal.signal(signal.SIGALRM, _alarmHandler)
-    signal.alarm(timeout)
+    if not timeout is "process":
+        signal.signal(signal.SIGALRM, _alarmHandler)
+        signal.alarm(timeout)
 
     pariProcess.stdin.write(repr(s)+'\n')
     pariProcess.stdin.flush()
@@ -56,5 +57,6 @@ def remotePariEval(s, timeout = 60):
         from algebra import pari
         raise pari.PariError
     result = eval(resultStr)
-    signal.alarm(0) # reset alarm
+    if not timeout is "process":
+        signal.alarm(0) # reset alarm
     return result
