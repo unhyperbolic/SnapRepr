@@ -21,7 +21,9 @@ sys.path.append(base_path)
 try:
     from manifold.triangulation import triangulation, read_triangulation_from_file
     from algebra.polynomial import Polynomial
-    from algebra.solvePolynomialEquations import solvePolynomialEquations, solvePolynomialEquationsExactly, exactSolutionsToNumerical
+    from algebra.solvePolynomialEquations import solvePolynomialEquations
+    from algebra.solvePolynomialEquations import solvePolynomialEquationsExactly
+    from algebra.solvePolynomialEquations import exactSolutionsToNumerical
     from utilities.solutionCheck import solutionCheck
     import algebra.mpmathFunctions
     import manifold.slN
