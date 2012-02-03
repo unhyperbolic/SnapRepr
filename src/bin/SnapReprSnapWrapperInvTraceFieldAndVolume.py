@@ -58,6 +58,10 @@ def process_file(trig_file):
     if not ("solution type: geometric" in s or "solution type: nongeometric" in s):
         return None
 
+    try:
+        os.unlink(in_filename)
+    except:
+        pass
 
     d,in_filename = tempfile.mkstemp()
     tmp_in_file = open(in_filename, 'wb')
@@ -72,6 +76,10 @@ def process_file(trig_file):
     l = subprocess.Popen("ulimit -t 20; snap <" + in_filename, shell=True, stdout = subprocess.PIPE)
     s2 = l.stdout.read()
 
+    try:
+        os.unlink(in_filename)
+    except:
+        pass
 
     r = re.search("Complex volume: (.*)",s)
 
