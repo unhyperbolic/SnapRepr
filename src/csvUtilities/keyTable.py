@@ -21,9 +21,9 @@ def keyTable(listOfDicts, key):
 
     for d in listOfDicts:
         if d.has_key(key):
-            if keyedTable.has_key(key):
-                keyedTable[key].add(d)
+            if keyedTable.has_key(d[key]):
+                keyedTable[d[key]].append(d)
             else:
-                keyedTable[key] = set([d])
+                keyedTable[d[key]] = [d]
 
     return keyedTable
