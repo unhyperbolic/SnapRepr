@@ -355,14 +355,16 @@ def get_all_variables(poly_list):
     variables.sort()
     return variables
 
-def polynomialNonZeroCondition(eqns, var):
+def polynomialNonZeroCondition(eqns, var, andNonOne = False):
     variables = get_all_variables(eqns)
 
-    eqns = [e for e in eqns]
+    prod = Polynomial.fromVariableName(var)
 
-    prod = Polynomial.constantPolynomial(1)
-    for i in variables + [var]:
+    for i in variables:
         prod = prod * Polynomial.fromVariableName(i)
+        if andNonOne:
+            prod = prod * (Polynomial.constantPolynomial(1) -
+                           Polynomial.fromVariableName(i))
 
     return prod - Polynomial.constantPolynomial(1)
 

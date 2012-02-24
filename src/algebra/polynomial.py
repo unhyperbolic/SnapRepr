@@ -169,6 +169,18 @@ class Monomial(object):
 
         return Monomial(coefficient, varDict)
 
+    def __pow__(self, other):
+        
+        assert isinstance(other, int)
+        assert other >= 0
+        
+        if other == 0:
+            return Monomial.constantMonomial(1)
+        if other == 1:
+            return self
+        if other % 2 == 1:
+            return self * (self ** (other-1))
+        return (self * self) ** (other/2)
     # Negate a monomial
     def __neg__(self):
         return Monomial(-self._coefficient, self._vars)
