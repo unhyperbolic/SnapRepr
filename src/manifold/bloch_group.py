@@ -48,10 +48,12 @@ class PtolemyCochain:
         c02c13 = self.c02 * self.c13
         c03c12 = self.c03 * self.c12
 
-        if not ( ((- c03c12 - c01c23 + c02c13).abs() < get_pari_allowed_error()) or
-                 ((- c03c12 + c01c23 + c02c13).abs() < get_pari_allowed_error()) or
-                 ((  c03c12 - c01c23 + c02c13).abs() < get_pari_allowed_error()) or
-                 ((  c03c12 + c01c23 + c02c13).abs() < get_pari_allowed_error())):
+        maxErr = globalsettings.getSetting("maximalError")
+
+        if not ( (abs(- c03c12 - c01c23 + c02c13) < maxErr) or
+                 (abs(- c03c12 + c01c23 + c02c13) < maxErr) or
+                 (abs(  c03c12 - c01c23 + c02c13) < maxErr) or
+                 (abs(  c03c12 + c01c23 + c02c13) < maxErr)):
 
             raise NumericalError(
                 val=[ (- c03c12 - c01c23 + c02c13).abs(),
@@ -63,6 +65,8 @@ class PtolemyCochain:
                   self.c12, self.c13, self.c23))
 
 def logOfSquare(c):
+    return mpmath.log(c)
+
     csquare = c * c
 
     maxErr = globalsettings.getSetting("maximalError")
@@ -87,23 +91,23 @@ class w_triple:
 
         self.w2 = logOfSquare(P.c01) + logOfSquare(P.c23) - logOfSquare(P.c03) - logOfSquare(P.c12)
 
-        w0_e = self.w0.exp()
-        w1_e = (-self.w1).exp()
+        w0_e = mpmath.exp(self.w0)
+        w1_e = mpmath.exp(-self.w1)
 
         errs = [abs(1 - w0_e - w1_e),
                 abs(1 + w0_e - w1_e),
                 abs(1 - w0_e + w1_e),
                 abs(1 + w0_e + w1_e)]
 
-        if not (errs[0] < globalsettings.getSetting("maxError") or
-                errs[1] < globalsettings.getSetting("maxError") or
-                errs[2] < globalsettings.getSetting("maxError") or
-                errs[3] < globalsettings.getSetting("maxError")):
+        if not (errs[0] < globalsettings.getSetting("maximalError") or
+                errs[1] < globalsettings.getSetting("maximalError") or
+                errs[2] < globalsettings.getSetting("maximalError") or
+                errs[3] < globalsettings.getSetting("maximalError")):
             raise NumericalError(val = errs,
                                  msg = "w triple (%s,%s,%s) from %s %s %s %s %s %s" % 
                                  (self.w0, self.w1, self.w2, P.c01, P.c02, P.c03, P.c12, P.c13, P.c23))
             
-        if not (self.w0+self.w1+self.w2).abs() < get_pari_allowed_error():
+        if not abs(self.w0+self.w1+self.w2) < globalsettings.getSetting("maximalError"):
             raise NumericalError(val = (self.w0+self.w1+self.w2).abs(),
                                  msg = "w triple (%s,%s,%s) not sum to 0 from %s %s %s %s %s %s" % 
                                  (self.w0, self.w1, self.w2, P.c01, P.c02, P.c03, P.c12, P.c13, P.c23))
@@ -174,6 +178,9 @@ class zpq_triple:
             self.z = z2
             self.p = p2
             self.q = q2
+
+    def __repr__(self):
+        return "[%s;%d,%d]" % (str(self.z), self.p, self.q)
 
     def L_function(self):
         p = self.p
