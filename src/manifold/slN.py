@@ -407,6 +407,8 @@ def get_Ptolemy_cochain(t, N, c_params, no_check = False):
                     c12 = c_params[c_parameter_var(coord+(0,1,1,0),i)],
                     c13 = c_params[c_parameter_var(coord+(0,1,0,1),i)],
                     c23 = c_params[c_parameter_var(coord+(0,0,1,1),i)],
+                    ptolemy_index = coord,
+                    tet_index = tet.index,
                     no_check = no_check))
                       
     return elements

@@ -167,7 +167,7 @@ def write_magma_files(options, triangulation_filename):
         # Make the input for magma
         # pre_vars tells the procedure to list t in the term order used
         # for the computation of the Groebner basis
-        term_order = get_term_order(eqns, pre_vars = ['t'])
+        term_order = algebra.magma.get_term_order(eqns, pre_vars = ['t'])
         out = algebra.magma.primary_decomposition(eqns, term_order = term_order)
 
         # Compute the hash of the ideal
@@ -274,6 +274,8 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
 
     sys.stderr.write("Output File: %s\n" % csvOutputFileName)
 
+    cross_ratios = []
+
     csv_writer = csv.DictWriter(output, 
                                 fieldnames = readCensusTable.header,
                                 restval = "")
@@ -376,18 +378,23 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
                 error_condition = "Could not parse Variety Output %d" % index_prime_ideal
 
             if prime_ideal.dimension == 0:
-                try:
-                    csv_dict["PtolemyField"] = (
-                        algebra.magma.parseDefiningRelationshipAbsolutizedAlgebraicClosure(
-                            varietyData))
-                except:
-                    error_condition = "Could not parse Field in Variety %d" % index_prime_ideal
+                #try:
+                #    csv_dict["PtolemyField"] = (
+                #        algebra.magma.parseDefiningRelationshipAbsolutizedAlgebraicClosure(
+                #            varietyData))
+                #except:
+                #    error_condition = "Could not parse Field in Variety %d" % index_prime_ideal
 
                 try:
                     csv_dict["Ptolemy Field"] = ""
                     csv_dict["Ptolemy Field reduced"] = ""
                     
-                    cvols, nf = get_complex_volumes(t, N, c, prime_ideal, not_paranoid = not options.paranoid)
+                    cvols, nf, the_cross_ratios = (
+                        get_complex_volumes_and_cross_ratios(
+                            t, N, c, prime_ideal,
+                            not_paranoid = not options.paranoid))
+
+                    cross_ratios.append(the_cross_ratios)
 
                     nfStr = 'Q'
                     nfStrReduced = 'Q'
@@ -442,14 +449,33 @@ def process_magma_output_headers_stage2(options, magma_out, magma_filename):
     print resultString[:-1]
     open(csvOutputFileName, 'w').write(resultString)
     
+    if options.print_cross_ratios:
 
-def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
+        converted_cross_ratios = (
+            [
+                [
+                    dict([(k,complex(v)) for k, v in d.items()])
+                    for d in conjugates
+                ]
+                for conjugates in cross_ratios
+            ])
+
+        crossRatioFileName = csvOutputFilenameBase + '_magma.cross_ratios'
+        sys.stderr.write("Cross Ratio Output File: %s\n" % crossRatioFileName)
+        crossRatioFile = open(crossRatioFileName,'w')
+        
+        crossRatioFile.write(repr(converted_cross_ratios))
+                                     
+                                     
+
+def get_complex_volumes_and_cross_ratios(t, N, c, primeIdeal, not_paranoid = False):
 
     # Find the points in the variety
     # solvePolynomialEquations assumes that prime_ideal is given
     # in Groebner basis
 
     all_cvols = []
+    all_cross_ratios = []
 
     sys.stderr.write("Solving numerically the old way...\n")
 
@@ -583,6 +609,17 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
         # a different representation of an extended Bloch group element
         zpqs = [manifold.bloch_group.zpq_triple(x, no_check = not_paranoid) for x in ws]
 
+        cross_ratios = {}
+        for zpq_triple in zpqs:
+            for k, v in zpq_triple.cross_ratios().items():
+                cross_ratios[k] = v
+
+        all_cross_ratios.append(cross_ratios)
+                
+        #for i in zpqs:
+        #    print i
+        
+
         # Compute the volume function and sum for all [z;p,q]
         vols = [x.volume() for x in zpqs]
         vol = sum(vols)
@@ -601,7 +638,7 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
             raise NumericalError(val = [vol, cvol], 
                                  msg = "Vol and Complex Vol not matching")
         all_cvols.append(cvol)
-    return all_cvols, nf
+    return all_cvols, nf, all_cross_ratios
 
 #            sys.stderr.write(
 #                "Irreducible component of variety No %d is of dimension %d\n" 
@@ -619,13 +656,6 @@ def get_complex_volumes(t, N, c, primeIdeal, not_paranoid = False):
 #                except:
 #                    open(path + '/' + this_outfile,'w').write(out)
 
-def get_term_order(polys, pre_vars = [], post_vars = []):
-    all_vars = sum([p.variables() for p in polys], [])
-    sort_vars = set(all_vars) - set(pre_vars) - set(post_vars)
-    sort_vars = list(sort_vars)
-    sort_vars.sort()
-
-    return pre_vars + sort_vars + post_vars
 
 
 def create_parser():
@@ -680,6 +710,10 @@ def create_parser():
                       dest = "print_solution",
                       default = False, action = "store_true",
                       help = "print solutions")
+    parser.add_option("-z", "--cross-ratios",
+                      dest = "print_cross_ratios",
+                      default = False, action = "store_true",
+                      help = "print cross ratios")
     return parser
 
 def generate_magma_comment(t,N,triangulation_filename,h,id_c_parms, pre_eqns):

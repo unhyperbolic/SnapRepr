@@ -99,13 +99,22 @@ class permutation(list):
 
 class tetrahedron:
     def __init__(self,index,neighbor_index,gluing,
-                 cusp_index=[-1,-1,-1,-1],positive_orientation=True):
+                 cusp_index=[-1,-1,-1,-1],positive_orientation=True,
+                 peripheral_curves = None):
         self.index=index
         self.neighbor_index=neighbor_index
         self.cusp_index=cusp_index
         self.gluing=map(permutation,gluing)
         self.positive_orientation = bool(positive_orientation)
         self.edge_orientation=[[0 for y in range(4)] for x in range(4)]
+        if peripheral_curves:
+            self.peripheral_curves = peripheral_curves
+        else:
+            self.peripheral_curves = [[[[0 
+                                         for x in range(4)]
+                                        for y in range(4)]
+                                       for z in range(2)]
+                                      for a in range(2)]
         # marks whether edge from x and y is oriented positive or not
 
     def __repr__(self):
@@ -279,6 +288,10 @@ class triangulation:
             l=l.split()
             self.num_or_cusps=int(l[0])
             self.num_nonor_cusps=int(l[1])
+
+            self.num_or_cusps = self.num_or_cusps + self.num_nonor_cusps
+            self.num_nonor_cusps = 0
+
             self.cusp_shape=[]
             l=l[2:]
             for i in range(self.num_or_cusps+self.num_nonor_cusps):
@@ -288,16 +301,26 @@ class triangulation:
             l=l[1:]
             for i in range(self.num_tets):
                 positive_orientation=True
-                if len(self.comment_line)>2+i and self.comment_line[1]=='orientations:' and self.comment_line[2+i]=='negative':
+                if (len(self.comment_line)>2+i and 
+                    self.comment_line[1]=='orientations:' and 
+                    self.comment_line[2+i]=='negative'):
                     positive_orientation=False
-                if len(self.comment_line)>3+i and self.comment_line[2]=='orientations:' and self.comment_line[3+i]=='negative':
-                    positive_orientation=False                    
+                if (len(self.comment_line)>3+i and 
+                    self.comment_line[2]=='orientations:' and 
+                    self.comment_line[3+i]=='negative'):
+                    positive_orientation=False
                 self.tet_list.append(
-                    tetrahedron(index=i,
-                                neighbor_index=map(int,l[0:4]),
-                                gluing=l[4:8],
-                                cusp_index=map(int,l[8:12]),
-                                positive_orientation=positive_orientation))
+                    tetrahedron(index = i,
+                                neighbor_index = map(int,l[0:4]),
+                                gluing = l[4:8],
+                                cusp_index = map(int,l[8:12]),
+                                peripheral_curves = 
+                                 [[[[int(l[12+16*merdLong+8*handedness+4*vert+face])
+                                     for face in range(4)]
+                                    for vert in range(4)]
+                                   for handedness in range(2)]
+                                  for merdLong in range(2)],
+                                positive_orientation = positive_orientation))
                 l=l[4*3+4*16+2:]
         else:
             raise ValueError, "Argument to constructor needs to be a string or a triangulation"

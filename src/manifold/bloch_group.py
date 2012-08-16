@@ -30,7 +30,8 @@ class DegenerateSimplexException(Exception):
     pass
     
 class PtolemyCochain:
-    def __init__(self, sign, c01, c02, c03, c12, c13, c23, no_check = False):
+    def __init__(self, sign, c01, c02, c03, c12, c13, c23, no_check = False,
+                 ptolemy_index = None, tet_index = None):
         self.sign = sign
         self.c01 = c01
         self.c02 = c02
@@ -38,6 +39,9 @@ class PtolemyCochain:
         self.c12 = c12
         self.c13 = c13
         self.c23 = c23
+
+        self.ptolemy_index = ptolemy_index
+        self.tet_index = tet_index
 
         if not no_check:
             self.checkConsistency()
@@ -82,6 +86,9 @@ class w_triple:
         assert isinstance(P, PtolemyCochain)
         self.sign = P.sign
 
+        self.ptolemy_index = P.ptolemy_index
+        self.tet_index = P.tet_index
+
         self.w0 = logOfSquare(P.c03) + logOfSquare(P.c12) - logOfSquare(P.c02) - logOfSquare(P.c13)
         self.w1 = logOfSquare(P.c02) + logOfSquare(P.c13) - logOfSquare(P.c01) - logOfSquare(P.c23)
 
@@ -119,6 +126,9 @@ class zpq_triple:
     def __init__(self, w, no_check = False):
         assert isinstance(w, w_triple)
         self.sign = w.sign
+
+        self.ptolemy_index = w.ptolemy_index
+        self.tet_index = w.tet_index
         
         def pqCandidates(z, w = w):
 
@@ -146,6 +156,9 @@ class zpq_triple:
                                  msg = "err1 %s %s" % (candidate, err))
 
         self.z, self.p, self.q = candidate
+
+        self.zp = 1 / (1 - self.z)
+        self.zpp = 1 - 1 / self.z
 
         return
 
@@ -181,6 +194,20 @@ class zpq_triple:
 
     def __repr__(self):
         return "[%s;%d,%d]" % (str(self.z), self.p, self.q)
+
+    def cross_ratios(self):
+        ext_str = ""
+        for i in self.ptolemy_index:
+            if i > 9:
+                ext_str += "_"
+            ext_str += "%d" %i
+        ext_str += "_%d" % self.tet_index
+
+        return {
+            "z_" + ext_str : self.z,
+            "zp_" + ext_str : self.zp,
+            "zpp_" + ext_str : self.zpp
+            }
 
     def L_function(self):
         p = self.p

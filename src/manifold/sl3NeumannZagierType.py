@@ -1,6 +1,6 @@
 import operator
 
-from triangulation import left_out_number
+from manifold.triangulation import left_out_number,permutation
 from algebra.polynomial import Monomial, Polynomial
 from manifold.slN import polynomialNonZeroCondition
 
@@ -101,11 +101,12 @@ def get_edge_parameter(vert0, vert1, small_tet_vert, tet):
     return Monomial.fromVariableName(b+"_%d_%d" % (small_tet_vert,tet.index))
 
 
-def produce_edge_equation_for_edge_class(edgeClass,trig):
+def produce_edge_equation_for_edge_class(edgeClass, trig):
 
     return NeumannZagierTypeEquation(
         reduce(operator.__mul__,
-               [get_edge_parameter(e.vert_0(),e.vert_1(),e.vert_0(),trig.tet_list[e.tet()]) for e in edgeClass]))
+               [get_edge_parameter(e.vert_0(),e.vert_1(),e.vert_0(),trig.tet_list[e.tet()])
+                for e in edgeClass]))
 
 def produce_edge_equations(trig):
 
@@ -136,8 +137,75 @@ def produce_face_equations(triangulation):
     return [produce_face_equation_for_face_class(f, triangulation) for f in triangulation.get_face_classes()]
 
 def produce_all_equations(trig):
-    return produce_face_equations(trig) + produce_edge_equations(trig)
+    return produce_face_equations(trig) + produce_edge_equations(trig) + produce_peripheral_equations(trig)
 
+def produce_peripheral_equation_for_cusp(trig,
+                                         curve_coeffs,
+                                         cusp_index,
+                                         dist):
+
+    monomialLeft = Monomial.constantMonomial(1)
+    monomialRight = Monomial.constantMonomial(1)
+
+    for tet in trig.tet_list:
+        for vNearCusp in range(4):
+            if tet.cusp_index[vNearCusp] == cusp_index:
+                for vAwayCusp in range(4):
+                    if not vNearCusp == vAwayCusp:
+                        edge_param = get_edge_parameter(
+                            vNearCusp,vAwayCusp,
+                            vNearCusp if dist == 0
+                            else vAwayCusp,
+                            tet)
+                        for c in range(2):
+
+                            def FLOW(a,b):
+                                if (a<0 and b<0) or (a>0 and b>0):
+                                    return 0
+                                max_abs = min(abs(a), abs(b))
+                                if a<0:
+                                    return -max_abs
+                                else:
+                                    return max_abs
+
+                            face = left_out_number([vNearCusp, vAwayCusp])
+                            other_face = left_out_number([vNearCusp, vAwayCusp, face])
+                            if permutation([vNearCusp, vAwayCusp, face, other_face]).is_odd:
+                                face, other_face = other_face, face
+
+                            #face, other_face such that with vNearCusp and vAwayCusp forms positively oriented tet
+
+                            flow = FLOW(tet.peripheral_curves[c][0][vNearCusp][face],
+                                        tet.peripheral_curves[c][0][vNearCusp][other_face])
+                            
+                            if not flow == 0:
+                                print flow, edge_param
+
+                            expo = curve_coeffs[c] * flow
+
+                            if expo > 0:
+                                monomialLeft *= edge_param ** expo
+                            else:
+                                monomialRight *= edge_param ** -expo
+
+
+    return NeumannZagierTypeEquation(monomialLeft, monomialRight)
+
+
+def produce_peripheral_equations_for_cusp(trig, curve_coeffs, cusp_index):
+    
+    return [
+        produce_peripheral_equation_for_cusp(trig, curve_coeffs, cusp_index, dist) for dist in range(3-1)]
+
+def produce_peripheral_equations_for_curve(trig, curve_coeffs):
+
+    return reduce(operator.__add__,
+                  [produce_peripheral_equations_for_cusp(trig, curve_coeffs, cusp_index)
+                   for cusp_index in range(trig.num_or_cusps)])
+
+def produce_peripheral_equations(trig):
+
+    return produce_peripheral_equations_for_curve(trig,(1,0)) # just for meridian
 
 def produce_all_equations_non_degenerate(trig):
     eqnsNZ = produce_all_equations(trig)
@@ -146,3 +214,4 @@ def produce_all_equations_non_degenerate(trig):
         polynomialNonZeroCondition(eqnsPolys,
                                    var = 't',
                                    andNonOne = True)]
+

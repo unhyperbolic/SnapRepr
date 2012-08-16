@@ -66,6 +66,15 @@ def ideal_to_magma(polys, term_order):
             + ">;\n")
 
 
+def get_term_order(polys, pre_vars = [], post_vars = []):
+    all_vars = sum([p.variables() for p in polys], [])
+    sort_vars = set(all_vars) - set(pre_vars) - set(post_vars)
+    sort_vars = list(sort_vars)
+    sort_vars.sort()
+
+    return pre_vars + sort_vars + post_vars
+
+
 def primary_decomposition(polys, term_order):
     """
     Similar to ideal_to_magma but includes the MAGMA command for Primary

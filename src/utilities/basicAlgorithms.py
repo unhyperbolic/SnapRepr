@@ -1,5 +1,10 @@
 import operator
 
+def sliceArray(a, l):
+    while a:
+        yield a[:l]
+        a = a[l:]
+
 def safeDictLookup(d, k, default = None):
     if d and d.has_key(k):
         return d[k]
