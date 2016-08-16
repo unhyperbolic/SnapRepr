@@ -1,0 +1,144 @@
+===============================================================================
+INSTALLATION
+===============================================================================
+
+1. Go to src directory and run setup script:
+
+cd src
+python setup.py install
+
+2. Add the src/bin directory to the $PATH environment variable
+
+For example, if the directory is /home/foo/SnapRepr/src/bin, then add the
+following lines to ~/.profile:
+
+PATH="/home/foo/SnapRepr/src/bin:$PATH"
+
+
+===============================================================================
+COMPUTING REPRESENTATIONS
+===============================================================================
+
+1. Export triangulation files from the snappy census.
+
+Program: SnapReprExportTrigsFromSnappyCensus.py
+Usage:
+ * use in the triangulation directory (uses directory structure)
+ * run program without arguments to see usage
+
+File naming conventions
+ (also see http://www.math.uic.edu/t3m/SnapPy/censuses.html):
+
+ * snappy.OrientableCuspedCensus:      
+    Name                                e.g., m003.trig
+ * snappy.LinkExteriors:               
+    Name                                e.g., 10^3_2.trig  for links
+                                              10_14.trig   for knots
+ * snappy.MorwenLinks:            
+    #crossings and #components, DT code e.g., 14^2_DT[nbgghcfIjbLgkMnAEd].trig
+ * snappy.AlternatingKnotExteriors:    
+    Name                                e.g., 15a5.trig
+ * snappy.NonalternatingKnotExteriors: 
+    Name,                               e.g., 15n4.trig
+
+Directory conventions:
+ * triangulations with number NO of tetrahedra < 30: 
+                                              cusped_NO/NAME.trig
+ * triangulations with 30 tetrahedra or more: cusped_30_higher/NAME.trig
+
+===============================================================================
+
+2. Ordering triangulations
+
+Program: SnapReprOrderTriangulation.py
+Usage: 
+ * Basic: SnapReprOrderTriangulation.py IN_TRIANGULATION_FILE
+ * Apply to all triangulations:
+   for i in *.trig; do
+       if ! echo $i | grep order >/dev/null; then
+           SnapReprOrderTriangulation.py $i; 
+       fi;
+   done
+
+File naming conventions:
+ * cusped_NO/NAME_ORDERSTATE.trig where ORDERSTATE is ordered or unorderable
+   e.g., cusped_4/m038_ordered.trig
+
+===============================================================================
+
+3. Create input files for magma
+
+Program: SnapReprMagmaPipeline.py
+Usage:   SnapReprMagmaPipeline.py TRIANGULATION_FILE.trig
+	 SnapReprMagmaPipeline.py -N 3 TRIANGULATION_FILE.trig
+
+         where
+	  * TRIANGULATION_FILE.trig is a SnapPea triangulation
+	  * -N specifies which SL(N,C)
+          * we get an input file for magma for each cohomology obstruction class
+
+File Naming Conventions:
+
+ * cusped_NO/NAME_ORDERSTATE_slN_cK.magma 
+     where
+        * N specifies which SL(N,C)
+	* K is indexing the cohomology obstruction classes
+
+===============================================================================
+
+4. Run magma
+
+Program: SnapReprMagmaWrapper is a wrapper around magma
+Usage:   SnapReprMagmaWrapper MAGMA_INPUT_FILE.magma
+
+File Naming Conventions:
+
+cusped_NO/NAME_ORDERSTATE_slN_cK.magma_out
+
+===============================================================================
+
+5. Solve the Groebner basis returned by magma and return complex volume
+
+Program: SnapReprMagmaPipeline
+
+5A. Making a CSV file for a single triangulation, SL(N,C) and cohomology
+    obstruction class:
+
+     SnapReprMagmaPipeline.py MAGMA_OUTPUT_FILE.magma_out
+     SnapReprMagmaPipeline -p 50 MAGMA_OUTPUT_FILE.magma_out
+
+5B. Printing the header for the CSV file:
+     cd triangulations
+     SnapReprMagmaPipeline -H > header.csv
+
+5C. Collecting the results in a single CSV file:
+    
+     cd triangulations
+     cat header.csv cusped_NO/*.csv > representations.csv
+
+Naming conventions:
+
+cusped_NO/NAME_ORDERSTATE_slN_cK_magma.csv
+
+Options:
+  * -p specifies precision
+
+===============================================================================
+
+OTHER TOOLS
+
+1. Making a spreadsheet with census volumes
+
+Snap_inv_trace_field_and_volume.py -H > census_volumes.csv
+for i in cusped*/*.trig; do 
+    Snap_inv_trace_field_and_volume.py $i >> census_volumes.csv; 
+done
+
+===============================================================================
+
+TODO
+
+* Write tools to sort and filter csv files
+* Make generation of magma files independent of pari
+* Pick 10 triangulations and pick with minimal no tets
+* python26 call
